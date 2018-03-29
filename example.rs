@@ -26,5 +26,5 @@ fn main() {
     // ...
 
     // At some point you can save/ overwrite your config
-    confy::save(("my_app", cfg).unwrap(); // Returns Result
+    confy::save("my_app", cfg).unwrap(); // Returns Result
 }
