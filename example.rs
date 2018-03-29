@@ -15,9 +15,9 @@ fn main() {
     //
     // The path is also dependant on the OS and all of this happens
     // completely transparently
-    let cfg = match confy::load("my_app") {
+    let cfg: MyConfig = match confy::load("my_app") {
         Some(cfg) => cfg,
-        None => confy::create(MyConfig {
+        None => confy::create(("my_app", MyConfig {
             /* ... initialise default ... */
         }),
     };
@@ -26,5 +26,5 @@ fn main() {
     // ...
 
     // At some point you can save/ overwrite your config
-    confy::save(cfg).unwrap(); // Returns Result
+    confy::save(("my_app", cfg).unwrap(); // Returns Result
 }
