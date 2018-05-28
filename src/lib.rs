@@ -12,8 +12,10 @@ mod utils;
 
 use directories::ProjectDirs;
 use serde::{de::DeserializeOwned, Serialize};
-use std::io::{Error as IoError, ErrorKind::NotFound};
-use std::{fs::File, path::PathBuf};
+use std::io::{Error as IoError, ErrorKind::NotFound, Write};
+use std::{
+    fs::{File, OpenOptions}, path::PathBuf,
+};
 
 use utils::*;
 
@@ -41,5 +43,15 @@ pub fn load<T: Serialize + DeserializeOwned + Default>(name: &str) -> Result<T, 
 
 /// Store a configuration object
 pub fn store(name: &str, cfg: impl Serialize + Default) -> Result<(), IoError> {
+    let project = ProjectDirs::from("rs", name, name);
+
+    let path: PathBuf = [
+        project.config_dir().to_str().unwrap(),
+        &format!("{}.toml", name),
+    ].iter()
+        .collect();
+
+    let mut f = OpenOptions::new().write(true).open(path)?;
+    f.write_all(toml::to_string_pretty(&cfg).unwrap().as_bytes())?;
     Ok(())
 }
