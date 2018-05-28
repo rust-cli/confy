@@ -4,3 +4,7 @@ version = "0.1.0"
 authors = ["Katharina Fey <kookie@spacekookie.de>"]
 
 [dependencies]
+serde = "1.0"
+serde_derive = "1.0"
+toml = "0.4"
+directories = "0.10.0"
