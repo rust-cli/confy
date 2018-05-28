@@ -29,7 +29,7 @@ pub fn load<T: Serialize + DeserializeOwned + Default>(name: &str) -> Result<T, 
     match File::open(&path) {
         Ok(mut cfg) => Ok(toml::from_str(&cfg.get_string().unwrap()).unwrap()),
         Err(ref e) if e.kind() == NotFound => {
-            fs::create_dir_all(&path)?;
+            fs::create_dir_all(project.config_dir())?;
             store(name, T::default())?;
             Ok(T::default())
         }
@@ -38,8 +38,9 @@ pub fn load<T: Serialize + DeserializeOwned + Default>(name: &str) -> Result<T, 
 }
 
 /// Store a configuration object
-pub fn store(name: &str, cfg: impl Serialize + Default) -> Result<(), IoError> {
+pub fn store<T: Serialize>(name: &str, cfg: T) -> Result<(), IoError> {
     let project = ProjectDirs::from("rs", name, name);
+    fs::create_dir_all(project.config_dir())?;
 
     let path: PathBuf = [
         project.config_dir().to_str().unwrap(),
@@ -47,7 +48,8 @@ pub fn store(name: &str, cfg: impl Serialize + Default) -> Result<(), IoError> {
     ].iter()
         .collect();
 
-    let mut f = OpenOptions::new().write(true).open(path)?;
-    f.write_all(toml::to_string_pretty(&cfg).unwrap().as_bytes())?;
+    let mut f = OpenOptions::new().write(true).create(true).open(path)?;
+    let s = toml::to_string_pretty(&cfg).unwrap();
+    f.write_all(s.as_bytes())?;
     Ok(())
 }

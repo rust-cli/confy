@@ -7,3 +7,11 @@ authors = ["Katharina Fey <kookie@spacekookie.de>"]
 serde = "1.0"
 toml = "0.4"
 directories = "0.10.0"
+serde_derive = { version = "1.0", optional = true }
+
+[features]
+sd = ["serde_derive"]
+
+[[example]]
+name = "simple"
+required-features = ["sd"]
