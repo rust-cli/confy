@@ -1,6 +1,6 @@
 [package]
 name = "confy"
-version = "0.1.0"
+version = "0.3.0"
 authors = ["Katharina Fey <kookie@spacekookie.de>"]
 
 [dependencies]
