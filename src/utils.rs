@@ -1,13 +1,7 @@
 //! Some storage utilities
 
-use std::io::Error as IoError;
-use serde::Serialize;
-use std::{fs::File, io::Read};
-
-/// A folder scaffolding utility which reports if errors occured
-pub(crate) fn scaffold_directories() -> Result<(), IoError> {
-    Ok(())
-} 
+use std::fs::File;
+use std::io::{Read, Error as IoError};
 
 pub trait CheckedStringRead {
     fn get_string(&mut self) -> Result<String, IoError>;

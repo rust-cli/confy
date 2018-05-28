@@ -2,22 +2,18 @@
 //!
 //!
 
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
 extern crate directories;
+extern crate serde;
 extern crate toml;
 
 mod utils;
+use utils::*;
 
 use directories::ProjectDirs;
 use serde::{de::DeserializeOwned, Serialize};
+use std::fs::{self, File, OpenOptions};
 use std::io::{Error as IoError, ErrorKind::NotFound, Write};
-use std::{
-    fs::{File, OpenOptions}, path::PathBuf,
-};
-
-use utils::*;
+use std::path::PathBuf;
 
 /// Load a configuration from the standard OS local scope for
 /// the current user.
@@ -30,10 +26,10 @@ pub fn load<T: Serialize + DeserializeOwned + Default>(name: &str) -> Result<T, 
     ].iter()
         .collect();
 
-    match File::open(path) {
+    match File::open(&path) {
         Ok(mut cfg) => Ok(toml::from_str(&cfg.get_string().unwrap()).unwrap()),
         Err(ref e) if e.kind() == NotFound => {
-            utils::scaffold_directories()?;
+            fs::create_dir_all(&path)?;
             store(name, T::default())?;
             Ok(T::default())
         }
