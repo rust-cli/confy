@@ -1,7 +1,11 @@
 [package]
 name = "confy"
-version = "0.3.0"
+version = "0.2.0"
 authors = ["Katharina Fey <kookie@spacekookie.de>"]
+description = "Boilerplate-free configuration management"
+license = "MIT/X11 OR Apache-2"
+documentation = "docs.rs/confy"
+repository = "https://github.com/rust-clique/confy"
 
 [dependencies]
 serde = "1.0"
