@@ -125,7 +125,7 @@ pub fn load<T: Serialize + DeserializeOwned + Default>(name: &str) -> Result<T, 
 ///
 /// ```rust,no_run
 /// # struct MyConf {}
-/// let my_cfg = MyConf { ... };
+/// let my_cfg = MyConf {};
 /// confy::store(my_cfg)?;
 /// ```
 ///
