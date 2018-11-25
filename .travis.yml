@@ -1,0 +1,48 @@
+# Some basic stuff about what we're doing here
+dist: trusty
+language: rust
+services: docker
+sudo: required
+language: rust
+cache: cargo
+rust:
+  - nightly
+
+# This is required for coveralls
+addons:
+  apt:
+    packages:
+      - libcurl4-openssl-dev
+      - libelf-dev
+      - libdw-dev
+      - binutils-dev
+      - cmake
+    sources:
+      - kalakris-cmake
+
+# If nightly explodes we don't care aaas much
+matrix:
+  allow_failures:
+    - rust: nightly
+
+# This is a pretty big hack and only really needed on the first of a build chain
+before_script:
+  - (cargo install cargo-travis | true) && export PATH=$HOME/.cargo/bin:$PATH
+
+# Build, test, benchmark, document. Gogogogo!
+script:
+  - cargo build --verbose --all
+  - cargo test --verbose --all
+  - cargo bench --all
+  - cargo doc
+
+# Upload the whole mess
+after_success:
+  - cargo coveralls --verbose
+
+# AND GOD DAMN IT LET ME SLEEP!
+notifications:
+  email:
+    on_success: never
+    on_failure: never
+
