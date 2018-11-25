@@ -86,11 +86,10 @@ use std::path::PathBuf;
 /// configuration needs to implement `Default`.
 ///
 /// ```rust,no_run
-/// struct MyConfig {}
-/// impl ::std::default::Default for MyConf {
-///     fn default() -> Self { Self {} }
-/// }
-///
+/// # struct MyConfig {}
+/// # impl ::std::default::Default for MyConf {
+/// #     fn default() -> Self { Self {} }
+/// # }
 /// let cfg: MyConfig = confy::load("my-app")?;
 /// ```
 pub fn load<T: Serialize + DeserializeOwned + Default>(name: &str) -> Result<T, IoError> {
@@ -125,7 +124,7 @@ pub fn load<T: Serialize + DeserializeOwned + Default>(name: &str) -> Result<T, 
 /// configuration structure _can't_ implement `Default`.
 ///
 /// ```rust,no_run
-/// struct MyConf {}
+/// # struct MyConf {}
 /// let my_cfg = MyConf { ... };
 /// confy::store(my_cfg)?;
 /// ```
