@@ -2,8 +2,6 @@
 //!
 //! ## Why?
 //!
-//! Configuration management in any application is
-//! often overlooked and forgotten about.
 //! There are a lot of different requirements when
 //! selecting, loading and writing a config,
 //! depending on the operating system and other
@@ -26,7 +24,7 @@
 //! This way you only need to worry about the layout of
 //! your configuration, not where and how to store it.
 //!
-//! [serde]: docs.rs/crates/serde
+//! [serde]: https://docs.rs/crates/serde
 //!
 //! `confy` uses the [`Default`] trait in Rust to automatically
 //! create a new configuration, if none is available to read
@@ -78,7 +76,7 @@ use std::path::PathBuf;
 /// A new configuration file is created with default values if none
 /// exists.
 ///
-/// Errors that are returned from this function are IO related,
+/// Errors that are returned from this function are I/O related,
 /// for example if the writing of the new configuration fails
 /// or `confy` encounters an operating system or environment
 /// that it does not support.
@@ -88,7 +86,7 @@ use std::path::PathBuf;
 /// configuration needs to implement `Default`.
 ///
 /// ```rust,ignore
-///     let cfg: MyConfig = confy::load("my-app")?;
+/// let cfg: MyConfig = confy::load("my-app")?;
 /// ```
 pub fn load<T: Serialize + DeserializeOwned + Default>(name: &str) -> Result<T, IoError> {
     let project = ProjectDirs::from("rs", name, name);
@@ -112,9 +110,9 @@ pub fn load<T: Serialize + DeserializeOwned + Default>(name: &str) -> Result<T, 
 
 /// Save changes made to a configuration object
 ///
-/// This function does not assume that a configuration
-/// already exists. It will create a new one, with the
-/// provided values, if none exists.
+/// This function will update a configuration,
+/// with the provided values, and create a new one,
+/// if none exists.
 ///
 /// You can also use this function to create a new configuration
 /// with different initial values than which are provided
@@ -122,12 +120,11 @@ pub fn load<T: Serialize + DeserializeOwned + Default>(name: &str) -> Result<T, 
 /// configuration structure _can't_ implement `Default`.
 ///
 /// ```rust,ignore
-///     let my_cfg = MyConf { ... };
-///     confy::store(my_cfg)?;
-/// }
+/// let my_cfg = MyConf { ... };
+/// confy::store(my_cfg)?;
 /// ```
 ///
-/// Errors returned are IO errors related to not being
+/// Errors returned are I/O errors related to not being
 /// able to write the configuration file or if `confy`
 /// encounters an operating system or environment it does
 /// not support.
