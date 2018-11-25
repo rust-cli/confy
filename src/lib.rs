@@ -44,7 +44,7 @@
 //! }
 //!
 //! /// `MyConfig` implements `Default`
-//! impl ::std::ops::Default for MyConfig {
+//! impl ::std::default::Default for MyConfig {
 //!     fn default() -> Self { Self { version: 0, api_key: "".into() } }
 //! }
 //!
@@ -85,7 +85,12 @@ use std::path::PathBuf;
 /// that is inferrable by the compiler. Also note that your
 /// configuration needs to implement `Default`.
 ///
-/// ```rust,ignore
+/// ```rust,no_run
+/// struct MyConfig {}
+/// impl ::std::default::Default for MyConf {
+///     fn default() -> Self { Self {} }
+/// }
+///
 /// let cfg: MyConfig = confy::load("my-app")?;
 /// ```
 pub fn load<T: Serialize + DeserializeOwned + Default>(name: &str) -> Result<T, IoError> {
@@ -119,7 +124,8 @@ pub fn load<T: Serialize + DeserializeOwned + Default>(name: &str) -> Result<T, 
 /// by your `Default` trait implementation, or if your
 /// configuration structure _can't_ implement `Default`.
 ///
-/// ```rust,ignore
+/// ```rust,no_run
+/// struct MyConf {}
 /// let my_cfg = MyConf { ... };
 /// confy::store(my_cfg)?;
 /// ```
