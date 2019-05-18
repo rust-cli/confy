@@ -71,6 +71,19 @@ use std::fs::{self, File, OpenOptions};
 use std::io::{Error as IoError, ErrorKind::NotFound, Write};
 use std::path::PathBuf;
 
+#[derive(Debug)]
+enum ConfyError {
+    BadTomlData(Box<std::error::Error>),
+}
+
+impl std::fmt::Display for ConfyError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl std::error::Error for ConfyError {}
+
 /// Load an application configuration from disk
 ///
 /// A new configuration file is created with default values if none
@@ -92,7 +105,9 @@ use std::path::PathBuf;
 /// # }
 /// let cfg: MyConfig = confy::load("my-app")?;
 /// ```
-pub fn load<T: Serialize + DeserializeOwned + Default>(name: &str) -> Result<T, IoError> {
+pub fn load<T: Serialize + DeserializeOwned + Default>(
+    name: &str,
+) -> Result<T, Box<std::error::Error>> {
     let project = ProjectDirs::from("rs", name, name);
 
     let path: PathBuf = [
@@ -102,7 +117,13 @@ pub fn load<T: Serialize + DeserializeOwned + Default>(name: &str) -> Result<T, 
         .collect();
 
     match File::open(&path) {
-        Ok(mut cfg) => Ok(toml::from_str(&cfg.get_string().unwrap()).unwrap()),
+        Ok(mut cfg) => {
+            let x = toml::from_str(&cfg.get_string().unwrap());
+            match x {
+                Ok(x) => Ok(x),
+                Err(e) => Err(Box::new(ConfyError::BadTomlData(Box::new(e)))),
+            }
+        }
         Err(ref e) if e.kind() == NotFound => {
             fs::create_dir_all(project.config_dir())?;
             store(name, T::default())?;
