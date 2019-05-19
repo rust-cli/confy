@@ -61,6 +61,8 @@
 extern crate directories;
 extern crate serde;
 extern crate toml;
+#[macro_use]
+extern crate failure;
 
 mod utils;
 use utils::*;
@@ -71,10 +73,7 @@ use std::fs::{self, File, OpenOptions};
 use std::io::{Error as IoError, ErrorKind::NotFound, Write};
 use std::path::PathBuf;
 
-#[derive(Debug)]
-enum ConfyError {
-    BadTomlData(Box<std::error::Error>),
-}
+/*
 
 impl std::fmt::Display for ConfyError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
@@ -83,6 +82,22 @@ impl std::fmt::Display for ConfyError {
 }
 
 impl std::error::Error for ConfyError {}
+*/
+
+#[derive(Debug, Fail)]
+pub enum ConfyError {
+    #[fail(display = "Bad TOML data: {}", _0)]
+    BadTomlData(toml::de::Error),
+
+    #[fail(display = "Failed to create directory: {}", _0)]
+    DirectoryCreationFailed(std::io::Error),
+
+    #[fail(display = "Failed to save default configuration data.")]
+    DefaultDataStoreFailure(std::io::Error),
+
+    #[fail(display = "Failed to load configuration file.")]
+    GeneralLoadError(std::io::Error),
+}
 
 /// Load an application configuration from disk
 ///
@@ -105,31 +120,29 @@ impl std::error::Error for ConfyError {}
 /// # }
 /// let cfg: MyConfig = confy::load("my-app")?;
 /// ```
-pub fn load<T: Serialize + DeserializeOwned + Default>(
-    name: &str,
-) -> Result<T, Box<std::error::Error>> {
+pub fn load<T: Serialize + DeserializeOwned + Default>(name: &str) -> Result<T, ConfyError> {
     let project = ProjectDirs::from("rs", name, name);
 
     let path: PathBuf = [
         project.config_dir().to_str().unwrap(),
         &format!("{}.toml", name),
-    ].iter()
-        .collect();
+    ]
+    .iter()
+    .collect();
 
     match File::open(&path) {
         Ok(mut cfg) => {
             let x = toml::from_str(&cfg.get_string().unwrap());
-            match x {
-                Ok(x) => Ok(x),
-                Err(e) => Err(Box::new(ConfyError::BadTomlData(Box::new(e)))),
-            }
+
+            x.map_err(ConfyError::BadTomlData)
         }
         Err(ref e) if e.kind() == NotFound => {
-            fs::create_dir_all(project.config_dir())?;
-            store(name, T::default())?;
+            fs::create_dir_all(project.config_dir())
+                .map_err(ConfyError::DirectoryCreationFailed)?;
+            store(name, T::default()).map_err(ConfyError::DefaultDataStoreFailure)?;
             Ok(T::default())
         }
-        Err(e) => Err(e.into()),
+        Err(e) => Err(ConfyError::GeneralLoadError(e)),
     }
 }
 
@@ -161,8 +174,9 @@ pub fn store<T: Serialize>(name: &str, cfg: T) -> Result<(), IoError> {
     let path: PathBuf = [
         project.config_dir().to_str().unwrap(),
         &format!("{}.toml", name),
-    ].iter()
-        .collect();
+    ]
+    .iter()
+    .collect();
 
     let mut f = OpenOptions::new().write(true).create(true).open(path)?;
     let s = toml::to_string_pretty(&cfg).unwrap();

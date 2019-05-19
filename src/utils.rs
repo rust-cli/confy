@@ -1,7 +1,7 @@
 //! Some storage utilities
 
 use std::fs::File;
-use std::io::{Read, Error as IoError};
+use std::io::{Error as IoError, Read};
 
 pub trait CheckedStringRead {
     fn get_string(&mut self) -> Result<String, IoError>;
