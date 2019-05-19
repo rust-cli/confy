@@ -70,7 +70,7 @@ use utils::*;
 use directories::ProjectDirs;
 use serde::{de::DeserializeOwned, Serialize};
 use std::fs::{self, File, OpenOptions};
-use std::io::{Error as IoError, ErrorKind::NotFound, Write};
+use std::io::{ErrorKind::NotFound, Write};
 use std::path::PathBuf;
 
 /*
@@ -92,11 +92,23 @@ pub enum ConfyError {
     #[fail(display = "Failed to create directory: {}", _0)]
     DirectoryCreationFailed(std::io::Error),
 
-    #[fail(display = "Failed to save default configuration data.")]
-    DefaultDataStoreFailure(std::io::Error),
-
     #[fail(display = "Failed to load configuration file.")]
     GeneralLoadError(std::io::Error),
+
+    #[fail(display = "Failed to convert directory name to str.")]
+    BadConfigDirectoryStr,
+
+    #[fail(display = "Failed to serialize configuration data into TOML.")]
+    SerializeTomlError(toml::ser::Error),
+
+    #[fail(display = "Failed to write configuration file.")]
+    WriteConfigurationFileError(std::io::Error),
+
+    #[fail(display = "Failed to read configuration file.")]
+    ReadConfigurationFileError(std::io::Error),
+
+    #[fail(display = "Failed to open configuration file.")]
+    OpenConfigurationFileError(std::io::Error),
 }
 
 /// Load an application configuration from disk
@@ -123,23 +135,22 @@ pub enum ConfyError {
 pub fn load<T: Serialize + DeserializeOwned + Default>(name: &str) -> Result<T, ConfyError> {
     let project = ProjectDirs::from("rs", name, name);
 
-    let path: PathBuf = [
-        project.config_dir().to_str().unwrap(),
-        &format!("{}.toml", name),
-    ]
-    .iter()
-    .collect();
+    let config_dir_str = get_configuration_directory_str(&project)?;
+
+    let path: PathBuf = [config_dir_str, &format!("{}.toml", name)].iter().collect();
 
     match File::open(&path) {
         Ok(mut cfg) => {
-            let x = toml::from_str(&cfg.get_string().unwrap());
-
-            x.map_err(ConfyError::BadTomlData)
+            let cfg_string = cfg
+                .get_string()
+                .map_err(ConfyError::ReadConfigurationFileError)?;
+            let cfg_data = toml::from_str(&cfg_string);
+            cfg_data.map_err(ConfyError::BadTomlData)
         }
         Err(ref e) if e.kind() == NotFound => {
             fs::create_dir_all(project.config_dir())
                 .map_err(ConfyError::DirectoryCreationFailed)?;
-            store(name, T::default()).map_err(ConfyError::DefaultDataStoreFailure)?;
+            store(name, T::default())?;
             Ok(T::default())
         }
         Err(e) => Err(ConfyError::GeneralLoadError(e)),
@@ -167,19 +178,30 @@ pub fn load<T: Serialize + DeserializeOwned + Default>(name: &str) -> Result<T, 
 /// able to write the configuration file or if `confy`
 /// encounters an operating system or environment it does
 /// not support.
-pub fn store<T: Serialize>(name: &str, cfg: T) -> Result<(), IoError> {
+pub fn store<T: Serialize>(name: &str, cfg: T) -> Result<(), ConfyError> {
     let project = ProjectDirs::from("rs", name, name);
-    fs::create_dir_all(project.config_dir())?;
+    fs::create_dir_all(project.config_dir()).map_err(ConfyError::DirectoryCreationFailed)?;
 
-    let path: PathBuf = [
-        project.config_dir().to_str().unwrap(),
-        &format!("{}.toml", name),
-    ]
-    .iter()
-    .collect();
+    let config_dir_str = get_configuration_directory_str(&project)?;
 
-    let mut f = OpenOptions::new().write(true).create(true).open(path)?;
-    let s = toml::to_string_pretty(&cfg).unwrap();
-    f.write_all(s.as_bytes())?;
+    let path: PathBuf = [config_dir_str, &format!("{}.toml", name)].iter().collect();
+
+    let mut f = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .open(path)
+        .map_err(ConfyError::OpenConfigurationFileError)?;
+    let s = toml::to_string_pretty(&cfg).map_err(ConfyError::SerializeTomlError)?;
+    f.write_all(s.as_bytes())
+        .map_err(ConfyError::WriteConfigurationFileError)?;
     Ok(())
+}
+
+fn get_configuration_directory_str(project: &ProjectDirs) -> Result<&str, ConfyError> {
+    let config_dir_option = project.config_dir().to_str();
+
+    match config_dir_option {
+        Some(x) => Ok(x),
+        None => Err(ConfyError::BadConfigDirectoryStr),
+    }
 }
