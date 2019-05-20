@@ -189,6 +189,7 @@ pub fn store<T: Serialize>(name: &str, cfg: T) -> Result<(), ConfyError> {
     let mut f = OpenOptions::new()
         .write(true)
         .create(true)
+        .truncate(true)
         .open(path)
         .map_err(ConfyError::OpenConfigurationFileError)?;
     let s = toml::to_string_pretty(&cfg).map_err(ConfyError::SerializeTomlError)?;
