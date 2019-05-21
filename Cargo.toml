@@ -10,7 +10,7 @@ repository = "https://github.com/rust-clique/confy"
 [dependencies]
 serde = "1.0"
 toml = "0.4"
-directories = "0.10.0"
+directories = "0.10"
 serde_derive = { version = "1.0", optional = true }
 failure = "0.1"
 
