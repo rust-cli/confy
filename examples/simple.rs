@@ -5,8 +5,6 @@ extern crate confy;
 #[macro_use]
 extern crate serde_derive;
 
-use std::io;
-
 #[derive(Debug, Serialize, Deserialize)]
 struct ConfyConfig {
     name: String,
@@ -24,7 +22,7 @@ impl Default for ConfyConfig {
     }
 }
 
-fn main() -> Result<(), io::Error> {
+fn main() -> Result<(), confy::ConfyError> {
     let cfg: ConfyConfig = confy::load("confy_simple_app")?;
     println!("{:#?}", cfg);
     Ok(())
