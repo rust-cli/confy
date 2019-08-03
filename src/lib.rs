@@ -60,9 +60,12 @@
 
 extern crate directories;
 extern crate serde;
+#[cfg(feature = "toml_conf")]
 extern crate toml;
 #[macro_use]
 extern crate failure;
+#[cfg(feature = "yaml_conf")]
+extern crate serde_yaml;
 
 mod utils;
 use utils::*;
@@ -84,10 +87,20 @@ impl std::fmt::Display for ConfyError {
 impl std::error::Error for ConfyError {}
 */
 
+#[cfg(not(any(feature = "toml_conf", feature = "yaml_conf")))]
+compile_error!("Exactly one markup language feature must be enabled to use \
+confy.  Please enable one of either the `toml_conf` or `yaml_conf` \
+features.");
+
 #[derive(Debug, Fail)]
 pub enum ConfyError {
+    #[cfg(feature = "toml_conf")]
     #[fail(display = "Bad TOML data: {}", _0)]
     BadTomlData(toml::de::Error),
+
+    #[cfg(feature = "yaml_conf")]
+    #[fail(display = "Bad YAML data: {}", _0)]
+    BadYamlData(serde_yaml::Error),
 
     #[fail(display = "Failed to create directory: {}", _0)]
     DirectoryCreationFailed(std::io::Error),
@@ -98,8 +111,13 @@ pub enum ConfyError {
     #[fail(display = "Failed to convert directory name to str.")]
     BadConfigDirectoryStr,
 
+    #[cfg(feature = "toml_conf")]
     #[fail(display = "Failed to serialize configuration data into TOML.")]
     SerializeTomlError(toml::ser::Error),
+
+    #[cfg(feature = "yaml_conf")]
+    #[fail(display = "Failed to serialize configuration data into YAML.")]
+    SerializeYamlError(serde_yaml::Error),
 
     #[fail(display = "Failed to write configuration file.")]
     WriteConfigurationFileError(std::io::Error),
@@ -110,6 +128,12 @@ pub enum ConfyError {
     #[fail(display = "Failed to open configuration file.")]
     OpenConfigurationFileError(std::io::Error),
 }
+
+#[cfg(feature = "toml_conf")]
+const EXTENSION: &str = "toml";
+
+#[cfg(feature = "yaml_conf")]
+const EXTENSION: &str = "yaml";
 
 /// Load an application configuration from disk
 ///
@@ -137,15 +161,23 @@ pub fn load<T: Serialize + DeserializeOwned + Default>(name: &str) -> Result<T, 
 
     let config_dir_str = get_configuration_directory_str(&project)?;
 
-    let path: PathBuf = [config_dir_str, &format!("{}.toml", name)].iter().collect();
+    let path: PathBuf = [config_dir_str, &format!("{}.{}", name, EXTENSION)].iter().collect();
 
     match File::open(&path) {
         Ok(mut cfg) => {
             let cfg_string = cfg
                 .get_string()
                 .map_err(ConfyError::ReadConfigurationFileError)?;
-            let cfg_data = toml::from_str(&cfg_string);
-            cfg_data.map_err(ConfyError::BadTomlData)
+
+            #[cfg(feature = "toml_conf")] {
+                let cfg_data = toml::from_str(&cfg_string);
+                cfg_data.map_err(ConfyError::BadTomlData)
+            }
+            #[cfg(feature = "yaml_conf")] {
+                let cfg_data = serde_yaml::from_str(&cfg_string);
+                cfg_data.map_err(ConfyError::BadYamlData)
+            }
+
         }
         Err(ref e) if e.kind() == NotFound => {
             fs::create_dir_all(project.config_dir())
@@ -184,7 +216,7 @@ pub fn store<T: Serialize>(name: &str, cfg: T) -> Result<(), ConfyError> {
 
     let config_dir_str = get_configuration_directory_str(&project)?;
 
-    let path: PathBuf = [config_dir_str, &format!("{}.toml", name)].iter().collect();
+    let path: PathBuf = [config_dir_str, &format!("{}.{}", name, EXTENSION)].iter().collect();
 
     let mut f = OpenOptions::new()
         .write(true)
@@ -192,7 +224,15 @@ pub fn store<T: Serialize>(name: &str, cfg: T) -> Result<(), ConfyError> {
         .truncate(true)
         .open(path)
         .map_err(ConfyError::OpenConfigurationFileError)?;
-    let s = toml::to_string_pretty(&cfg).map_err(ConfyError::SerializeTomlError)?;
+
+    let s;
+    #[cfg(feature = "toml_conf")] {
+        s = toml::to_string_pretty(&cfg).map_err(ConfyError::SerializeTomlError)?;
+    }
+   #[cfg(feature = "yaml_conf")] {
+        s = serde_yaml::to_string(&cfg).map_err(ConfyError::SerializeYamlError)?;
+    }
+
     f.write_all(s.as_bytes())
         .map_err(ConfyError::WriteConfigurationFileError)?;
     Ok(())
