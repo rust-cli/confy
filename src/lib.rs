@@ -88,7 +88,7 @@ impl std::error::Error for ConfyError {}
 */
 
 #[cfg(not(any(feature = "toml_conf", feature = "yaml_conf")))]
-compile_error!("Exactly one markup language feature must be enabled to use \
+compile_error!("Exactly one config language feature must be enabled to use \
 confy.  Please enable one of either the `toml_conf` or `yaml_conf` \
 features.");
 
