@@ -24,4 +24,13 @@ fn main() -> Result<(), ::std::io::Error> {
 }
 ```
 
+## Features
 
+Enabling the `yaml_conf` feature while disabling the default `toml_conf`
+feature causes confy to use a YAML config file instead of TOML.
+
+```
+[dependencies.confy]
+features = ["yaml_conf"]
+default-features = false
+```
