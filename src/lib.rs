@@ -71,7 +71,7 @@ use directories::ProjectDirs;
 use serde::{de::DeserializeOwned, Serialize};
 use std::fs::{self, File, OpenOptions};
 use std::io::{ErrorKind::NotFound, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /*
 
@@ -139,6 +139,17 @@ pub fn load<T: Serialize + DeserializeOwned + Default>(name: &str) -> Result<T, 
 
     let path: PathBuf = [config_dir_str, &format!("{}.toml", name)].iter().collect();
 
+    load_path(path)
+}
+
+/// Load an application configuration from a specified path.
+///
+/// This is an alternate version of [`load`] that allows the specification of
+/// an aritrary path instead of a system one.  For more information on errors
+/// and behavior, see [`load`]'s documentation.
+///
+/// [`load`]: fn.load.html
+pub fn load_path<T: Serialize + DeserializeOwned + Default>(path: impl AsRef<Path>) -> Result<T, ConfyError> {
     match File::open(&path) {
         Ok(mut cfg) => {
             let cfg_string = cfg
@@ -148,9 +159,11 @@ pub fn load<T: Serialize + DeserializeOwned + Default>(name: &str) -> Result<T, 
             cfg_data.map_err(ConfyError::BadTomlData)
         }
         Err(ref e) if e.kind() == NotFound => {
-            fs::create_dir_all(project.config_dir())
-                .map_err(ConfyError::DirectoryCreationFailed)?;
-            store(name, T::default())?;
+            if let Some(parent) = path.as_ref().parent() {
+                fs::create_dir_all(parent)
+                    .map_err(ConfyError::DirectoryCreationFailed)?;
+            }
+            store_path(path, T::default())?;
             Ok(T::default())
         }
         Err(e) => Err(ConfyError::GeneralLoadError(e)),
@@ -186,6 +199,17 @@ pub fn store<T: Serialize>(name: &str, cfg: T) -> Result<(), ConfyError> {
 
     let path: PathBuf = [config_dir_str, &format!("{}.toml", name)].iter().collect();
 
+    store_path(path, cfg)
+}
+
+/// Save changes made to a configuration object at a specified path
+///
+/// This is an alternate version of [`store`] that allows the specification of
+/// an aritrary path instead of a system one.  For more information on errors
+/// and behavior, see [`store`]'s documentation.
+///
+/// [`store`]: fn.store.html
+pub fn store_path<T: Serialize>(path: impl AsRef<Path>, cfg: T) -> Result<(), ConfyError> {
     let mut f = OpenOptions::new()
         .write(true)
         .create(true)
