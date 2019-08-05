@@ -133,7 +133,7 @@ pub enum ConfyError {
 const EXTENSION: &str = "toml";
 
 #[cfg(feature = "yaml_conf")]
-const EXTENSION: &str = "yaml";
+const EXTENSION: &str = "yml";
 
 /// Load an application configuration from disk
 ///
