@@ -1,6 +1,6 @@
 [package]
 name = "confy"
-version = "0.3.2-alpha.0"
+version = "0.3.2-alpha.1"
 authors = ["Katharina Fey <kookie@spacekookie.de>"]
 description = "Boilerplate-free configuration management"
 license = "MIT/X11 OR Apache-2.0"
@@ -13,6 +13,7 @@ toml = "0.4"
 directories = "0.10"
 serde_derive = { version = "1.0", optional = true }
 failure = "0.1"
+cargo_metadata = "0.8"
 
 [features]
 sd = ["serde_derive"]
