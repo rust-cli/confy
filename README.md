@@ -8,20 +8,18 @@ Focus on storing the right data,
 instead of worrying about how to store it.
 
 ```rust
-#[derive(Serialize, Deserialize)]
+#[macro_use]
+extern crate serde_derive;
+
+#[derive(Default, Debug, Serialize, Deserialize)]
 struct MyConfig {
     version: u8,
     api_key: String,
 }
 
-/// `MyConfig` implements `Default`
-impl ::std::ops::Default for MyConfig {
-    fn default() -> Self { Self { version: 0, api_key: "".into() } }
-}
-
 fn main() -> Result<(), ::std::io::Error> {
-    let cfg = confy::load("my-app-name")?;
+    let cfg: MyConfig = confy::load("my-app-name")?;
+    dbg!(cfg);
+    Ok(())
 }
 ```
-
-
