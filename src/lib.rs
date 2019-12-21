@@ -62,53 +62,52 @@ extern crate cargo_metadata;
 extern crate directories;
 extern crate serde;
 extern crate toml;
-#[macro_use]
-extern crate failure;
 
 mod utils;
 use utils::*;
 
 use directories::ProjectDirs;
 use serde::{de::DeserializeOwned, Serialize};
+use std::error::Error;
+use std::fmt;
 use std::fs::{self, File, OpenOptions};
 use std::io::{ErrorKind::NotFound, Write};
 use std::path::PathBuf;
 
-#[derive(Debug, Fail)]
+#[derive(Debug)]
 pub enum ConfyError {
-    #[fail(display = "Bad TOML data: {}", _0)]
     BadTomlData(toml::de::Error),
-
-    #[fail(display = "Failed to create directory: {}", _0)]
     DirectoryCreationFailed(std::io::Error),
-
-    #[fail(display = "Failed to load configuration file.")]
     GeneralLoadError(std::io::Error),
-
-    #[fail(display = "Failed to convert directory name to str.")]
     BadConfigDirectoryStr,
-
-    #[fail(display = "Failed to serialize configuration data into TOML.")]
     SerializeTomlError(toml::ser::Error),
-
-    #[fail(display = "Failed to write configuration file.")]
     WriteConfigurationFileError(std::io::Error),
-
-    #[fail(display = "Failed to read configuration file.")]
     ReadConfigurationFileError(std::io::Error),
-
-    #[fail(display = "Failed to open configuration file.")]
     OpenConfigurationFileError(std::io::Error),
-
-    #[fail(display = "Failed to get cargo metadata.")]
     CargoMetadataExecError(cargo_metadata::Error),
-
-    #[fail(display = "Failed to get crate's dependency graph.")]
     CargoMetadataResolveError,
-
-    #[fail(display = "Failed to get crate's root dependency.")]
     CargoMetadataRootError,
 }
+
+impl fmt::Display for ConfyError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            ConfyError::BadTomlData(e) => write!(f, "Bad TOML data: {}", e),
+            ConfyError::DirectoryCreationFailed(e) => write!(f, "Failed to create directory: {}", e),
+            ConfyError::GeneralLoadError(_) => write!(f, "Failed to load configuration file."),
+            ConfyError::BadConfigDirectoryStr => write!(f, "Failed to convert directory name to str."),
+            ConfyError::SerializeTomlError(_) => write!(f, "Failed to serialize configuration data into TOML."),
+            ConfyError::WriteConfigurationFileError(_) => write!(f, "Failed to write configuration file."),
+            ConfyError::ReadConfigurationFileError(_) => write!(f, "Failed to read configuration file."),
+            ConfyError::OpenConfigurationFileError(_) => write!(f, "Failed to open configuration file."),
+            ConfyError::CargoMetadataExecError(_) => write!(f, "Failed to get cargo metadata."),
+            ConfyError::CargoMetadataResolveError => write!(f, "Failed to get crate's dependency graph."),
+            ConfyError::CargoMetadataRootError => write!(f, "Failed to get crate's root dependency."),
+        }
+    }
+}
+
+impl Error for ConfyError {}
 
 /// Load an application configuration from disk
 ///
