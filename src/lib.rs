@@ -58,7 +58,6 @@
 //! [`store`]: fn.store.html
 //!
 
-extern crate cargo_metadata;
 extern crate directories;
 extern crate serde;
 extern crate toml;
@@ -84,9 +83,6 @@ pub enum ConfyError {
     WriteConfigurationFileError(std::io::Error),
     ReadConfigurationFileError(std::io::Error),
     OpenConfigurationFileError(std::io::Error),
-    CargoMetadataExecError(cargo_metadata::Error),
-    CargoMetadataResolveError,
-    CargoMetadataRootError,
 }
 
 impl fmt::Display for ConfyError {
@@ -100,9 +96,6 @@ impl fmt::Display for ConfyError {
             ConfyError::WriteConfigurationFileError(_) => write!(f, "Failed to write configuration file."),
             ConfyError::ReadConfigurationFileError(_) => write!(f, "Failed to read configuration file."),
             ConfyError::OpenConfigurationFileError(_) => write!(f, "Failed to open configuration file."),
-            ConfyError::CargoMetadataExecError(_) => write!(f, "Failed to get cargo metadata."),
-            ConfyError::CargoMetadataResolveError => write!(f, "Failed to get crate's dependency graph."),
-            ConfyError::CargoMetadataRootError => write!(f, "Failed to get crate's root dependency."),
         }
     }
 }
@@ -131,9 +124,7 @@ impl Error for ConfyError {}
 /// let cfg: MyConfig = confy::load("my-app-name")?;
 /// ```
 pub fn load<T: Serialize + DeserializeOwned + Default>(name: &str) -> Result<T, ConfyError> {
-    let root_name = get_root_name()?;
-
-    let project = ProjectDirs::from("rs", &root_name, name);
+    let project = ProjectDirs::from("rs", "", name);
 
     let config_dir_str = get_configuration_directory_str(&project)?;
 
@@ -179,9 +170,7 @@ pub fn load<T: Serialize + DeserializeOwned + Default>(name: &str) -> Result<T, 
 /// encounters an operating system or environment it does
 /// not support.
 pub fn store<T: Serialize>(name: &str, cfg: T) -> Result<(), ConfyError> {
-    let root_name = get_root_name()?;
-
-    let project = ProjectDirs::from("rs", &root_name, name);
+    let project = ProjectDirs::from("rs", "", name);
     fs::create_dir_all(project.config_dir()).map_err(ConfyError::DirectoryCreationFailed)?;
 
     let config_dir_str = get_configuration_directory_str(&project)?;
@@ -207,25 +196,4 @@ fn get_configuration_directory_str(project: &ProjectDirs) -> Result<&str, ConfyE
         Some(x) => Ok(x),
         None => Err(ConfyError::BadConfigDirectoryStr),
     }
-}
-
-fn get_root_name() -> Result<String, ConfyError> {
-    let mut cmd = cargo_metadata::MetadataCommand::new();
-    let dep_graph = cmd.exec().map_err(ConfyError::CargoMetadataExecError)?;
-    
-    let package = match dep_graph.resolve {
-        Some(p) => Ok(p), 
-        None => Err(ConfyError::CargoMetadataResolveError),
-    }?;
-    
-    let package_root = match package.root {
-        Some(r) => Ok(r),
-        None => Err(ConfyError::CargoMetadataRootError),
-    }?;
-    //Package root will look like:
-    //PackageId { repr: "conf_test 0.1.0 (path+file:///Users/code/conf_test)" }
-
-    let root_name_string = package_root.repr.split(' ').collect::<Vec<&str>>();
-
-    Ok(root_name_string[0].to_string())
 }
