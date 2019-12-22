@@ -128,7 +128,7 @@ impl Error for ConfyError {}
 /// # impl ::std::default::Default for MyConf {
 /// #     fn default() -> Self { Self {} }
 /// # }
-/// let cfg: MyConfig = confy::load("my-app")?;
+/// let cfg: MyConfig = confy::load("my-app-name")?;
 /// ```
 pub fn load<T: Serialize + DeserializeOwned + Default>(name: &str) -> Result<T, ConfyError> {
     let root_name = get_root_name()?;
@@ -171,7 +171,7 @@ pub fn load<T: Serialize + DeserializeOwned + Default>(name: &str) -> Result<T, 
 /// ```rust,no_run
 /// # struct MyConf {}
 /// let my_cfg = MyConf {};
-/// confy::store(my_cfg)?;
+/// confy::store("my-app-name", my_cfg)?;
 /// ```
 ///
 /// Errors returned are I/O errors related to not being
