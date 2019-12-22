@@ -124,7 +124,7 @@ impl Error for ConfyError {}
 /// let cfg: MyConfig = confy::load("my-app-name")?;
 /// ```
 pub fn load<T: Serialize + DeserializeOwned + Default>(name: &str) -> Result<T, ConfyError> {
-    let project = ProjectDirs::from("rs", "", name);
+    let project = ProjectDirs::from("rs", "", name).ok_or(ConfyError::BadConfigDirectoryStr)?;
 
     let config_dir_str = get_configuration_directory_str(&project)?;
 
@@ -170,7 +170,7 @@ pub fn load<T: Serialize + DeserializeOwned + Default>(name: &str) -> Result<T, 
 /// encounters an operating system or environment it does
 /// not support.
 pub fn store<T: Serialize>(name: &str, cfg: T) -> Result<(), ConfyError> {
-    let project = ProjectDirs::from("rs", "", name);
+    let project = ProjectDirs::from("rs", "", name).ok_or(ConfyError::BadConfigDirectoryStr)?;
     fs::create_dir_all(project.config_dir()).map_err(ConfyError::DirectoryCreationFailed)?;
 
     let config_dir_str = get_configuration_directory_str(&project)?;
