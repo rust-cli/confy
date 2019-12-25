@@ -22,6 +22,7 @@ fn main() -> Result<(), ::std::io::Error> {
     dbg!(cfg);
     Ok(())
 }
+```
 
 Enabling the `yaml_conf` feature while disabling the default `toml_conf`
 feature causes confy to use a YAML config file instead of TOML.
