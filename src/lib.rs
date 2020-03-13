@@ -36,7 +36,9 @@
 //!
 //! [`Default`]: https://doc.rust-lang.org/std/default/trait.Default.html
 //!
-//! ```rust
+//! ```rust,no_run
+//! # use serde_derive::{Serialize, Deserialize};
+//!
 //! #[derive(Serialize, Deserialize)]
 //! struct MyConfig {
 //!     version: u8,
@@ -48,8 +50,9 @@
 //!     fn default() -> Self { Self { version: 0, api_key: "".into() } }
 //! }
 //!
-//! fn main() -> Result<(), ::std::io::Error> {
+//! fn main() -> Result<(), confy::ConfyError> {
 //!     let cfg = confy::load("my-app-name")?;
+//!     Ok(())
 //! }
 //! ```
 //!
@@ -57,10 +60,6 @@
 //!
 //! [`store`]: fn.store.html
 //!
-
-extern crate directories;
-extern crate serde;
-extern crate toml;
 
 mod utils;
 use utils::*;
@@ -72,6 +71,58 @@ use std::fmt;
 use std::fs::{self, File, OpenOptions};
 use std::io::{ErrorKind::NotFound, Write};
 use std::path::PathBuf;
+
+/// Load an application configuration from disk
+///
+/// A new configuration file is created with default values if none
+/// exists.
+///
+/// Errors that are returned from this function are I/O related,
+/// for example if the writing of the new configuration fails
+/// or `confy` encounters an operating system or environment
+/// that it does not support.
+///
+/// **Note:** The type of configuration needs to be declared in some way
+/// that is inferrable by the compiler. Also note that your
+/// configuration needs to implement `Default`.
+///
+/// ```rust,no_run
+/// # use confy::ConfyError;
+/// # use serde_derive::{Serialize, Deserialize};
+/// # fn main() -> Result<(), ConfyError> {
+/// #[derive(Serialize, Deserialize)]
+/// struct MyConfig {}
+/// # impl ::std::default::Default for MyConfig {
+/// #     fn default() -> Self { Self {} }
+/// # }
+/// let cfg: MyConfig = confy::load("my-app-name")?;
+/// # Ok(())
+/// # }
+/// ```
+pub fn load<T: Serialize + DeserializeOwned + Default>(name: &str) -> Result<T, ConfyError> {
+    let project = ProjectDirs::from("rs", "", name).ok_or(ConfyError::BadConfigDirectoryStr)?;
+
+    let config_dir_str = get_configuration_directory_str(&project)?;
+
+    let path: PathBuf = [config_dir_str, &format!("{}.toml", name)].iter().collect();
+
+    match File::open(&path) {
+        Ok(mut cfg) => {
+            let cfg_string = cfg
+                .get_string()
+                .map_err(ConfyError::ReadConfigurationFileError)?;
+            let cfg_data = toml::from_str(&cfg_string);
+            cfg_data.map_err(ConfyError::BadTomlData)
+        }
+        Err(ref e) if e.kind() == NotFound => {
+            fs::create_dir_all(project.config_dir())
+                .map_err(ConfyError::DirectoryCreationFailed)?;
+            store(name, T::default())?;
+            Ok(T::default())
+        }
+        Err(e) => Err(ConfyError::GeneralLoadError(e)),
+    }
+}
 
 #[derive(Debug)]
 pub enum ConfyError {
@@ -102,52 +153,6 @@ impl fmt::Display for ConfyError {
 
 impl Error for ConfyError {}
 
-/// Load an application configuration from disk
-///
-/// A new configuration file is created with default values if none
-/// exists.
-///
-/// Errors that are returned from this function are I/O related,
-/// for example if the writing of the new configuration fails
-/// or `confy` encounters an operating system or environment
-/// that it does not support.
-///
-/// **Note:** The type of configuration needs to be declared in some way
-/// that is inferrable by the compiler. Also note that your
-/// configuration needs to implement `Default`.
-///
-/// ```rust,no_run
-/// # struct MyConfig {}
-/// # impl ::std::default::Default for MyConf {
-/// #     fn default() -> Self { Self {} }
-/// # }
-/// let cfg: MyConfig = confy::load("my-app-name")?;
-/// ```
-pub fn load<T: Serialize + DeserializeOwned + Default>(name: &str) -> Result<T, ConfyError> {
-    let project = ProjectDirs::from("rs", "", name).ok_or(ConfyError::BadConfigDirectoryStr)?;
-
-    let config_dir_str = get_configuration_directory_str(&project)?;
-
-    let path: PathBuf = [config_dir_str, &format!("{}.toml", name)].iter().collect();
-
-    match File::open(&path) {
-        Ok(mut cfg) => {
-            let cfg_string = cfg
-                .get_string()
-                .map_err(ConfyError::ReadConfigurationFileError)?;
-            let cfg_data = toml::from_str(&cfg_string);
-            cfg_data.map_err(ConfyError::BadTomlData)
-        }
-        Err(ref e) if e.kind() == NotFound => {
-            fs::create_dir_all(project.config_dir())
-                .map_err(ConfyError::DirectoryCreationFailed)?;
-            store(name, T::default())?;
-            Ok(T::default())
-        }
-        Err(e) => Err(ConfyError::GeneralLoadError(e)),
-    }
-}
-
 /// Save changes made to a configuration object
 ///
 /// This function will update a configuration,
@@ -160,9 +165,15 @@ pub fn load<T: Serialize + DeserializeOwned + Default>(name: &str) -> Result<T, 
 /// configuration structure _can't_ implement `Default`.
 ///
 /// ```rust,no_run
+/// # use serde_derive::{Serialize, Deserialize};
+/// # use confy::ConfyError;
+/// # fn main() -> Result<(), ConfyError> {
+/// # #[derive(Serialize, Deserialize)]
 /// # struct MyConf {}
 /// let my_cfg = MyConf {};
 /// confy::store("my-app-name", my_cfg)?;
+/// # Ok(())
+/// # }
 /// ```
 ///
 /// Errors returned are I/O errors related to not being
