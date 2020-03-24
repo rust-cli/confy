@@ -1,4 +1,4 @@
-//! The most simplest exaples of how to use confy
+//! The most simplest examples of how to use confy
 
 extern crate confy;
 
