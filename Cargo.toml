@@ -12,14 +12,10 @@ edition = "2018"
 serde = "^1.0"
 toml = { version = "^0.5", optional = true }
 directories = "^2.0"
-serde_derive = { version = "1.0", optional = true }
-failure = "0.1"
 serde_yaml = { version = "0.8", optional = true }
-cargo_metadata = "0.8"
 
 [features]
 default = ["toml_conf"]
-sd = ["serde_derive"]
 toml_conf = ["toml"]
 yaml_conf = ["serde_yaml"]
 
