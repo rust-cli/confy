@@ -77,7 +77,13 @@ compile_error!("Exactly one config language feature must be enabled to use \
 confy.  Please enable one of either the `toml_conf` or `yaml_conf` \
 features.");
 
-#[cfg(feature = "toml_conf")]
+#[cfg(all(feature = "toml_conf", feature = "yaml_conf"))]
+compile_error!("Exactly one config language feature must be enabled to compile \
+confy.  Please disable one of either the `toml_conf` or `yaml_conf` features. \
+NOTE: `toml_conf` is a default feature, so disabling it might mean switching off \
+default features for confy in your Cargo.toml");
+
+#[cfg(all(feature = "toml_conf", not(feature = "yaml_conf")))]
 const EXTENSION: &str = "toml";
 
 #[cfg(feature = "yaml_conf")]
