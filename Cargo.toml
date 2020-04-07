@@ -10,8 +10,14 @@ edition = "2018"
 
 [dependencies]
 serde = "^1.0"
-toml = "^0.5"
+toml = { version = "^0.5", optional = true }
 directories = "^2.0"
+serde_yaml = { version = "0.8", optional = true }
+
+[features]
+default = ["toml_conf"]
+toml_conf = ["toml"]
+yaml_conf = ["serde_yaml"]
 
 [[example]]
 name = "simple"
