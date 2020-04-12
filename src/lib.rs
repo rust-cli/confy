@@ -37,7 +37,7 @@
 //! [`Default`]: https://doc.rust-lang.org/std/default/trait.Default.html
 //!
 //! ```rust,no_run
-//! # use serde_derive::{Serialize, Deserialize};
+//! use serde_derive::{Serialize, Deserialize};
 //!
 //! #[derive(Serialize, Deserialize)]
 //! struct MyConfig {
@@ -107,11 +107,9 @@ const EXTENSION: &str = "yml";
 /// # use confy::ConfyError;
 /// # use serde_derive::{Serialize, Deserialize};
 /// # fn main() -> Result<(), ConfyError> {
-/// #[derive(Serialize, Deserialize)]
+/// #[derive(Default, Serialize, Deserialize)]
 /// struct MyConfig {}
-/// # impl ::std::default::Default for MyConfig {
-/// #     fn default() -> Self { Self {} }
-/// # }
+///
 /// let cfg: MyConfig = confy::load("my-app-name")?;
 /// # Ok(())
 /// # }
@@ -162,6 +160,7 @@ pub fn load_path<T: Serialize + DeserializeOwned + Default>(path: impl AsRef<Pat
     }
 }
 
+/// The errors the confy crate can encounter.
 #[derive(Debug)]
 pub enum ConfyError {
     #[cfg(feature = "toml_conf")]
@@ -226,8 +225,9 @@ impl Error for ConfyError {}
 /// # use serde_derive::{Serialize, Deserialize};
 /// # use confy::ConfyError;
 /// # fn main() -> Result<(), ConfyError> {
-/// # #[derive(Serialize, Deserialize)]
-/// # struct MyConf {}
+/// #[derive(Serialize, Deserialize)]
+/// struct MyConf {}
+///
 /// let my_cfg = MyConf {};
 /// confy::store("my-app-name", my_cfg)?;
 /// # Ok(())
