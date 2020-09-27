@@ -153,8 +153,9 @@ pub fn load_path<T: Serialize + DeserializeOwned + Default>(path: impl AsRef<Pat
                 fs::create_dir_all(parent)
                     .map_err(ConfyError::DirectoryCreationFailed)?;
             }
-            store_path(path, T::default())?;
-            Ok(T::default())
+            let cfg = T::default();
+            store_path(path, &cfg)?;
+            Ok(cfg)
         }
         Err(e) => Err(ConfyError::GeneralLoadError(e)),
     }
