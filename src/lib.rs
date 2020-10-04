@@ -182,13 +182,7 @@ impl Error for ConfyError {}
 /// # }
 /// ```
 pub fn load<T: Serialize + DeserializeOwned + Default>(name: &str) -> Result<T, ConfyError> {
-    let project = ProjectDirs::from("rs", "", name).ok_or(ConfyError::BadConfigDirectoryStr)?;
-
-    let config_dir_str = get_configuration_directory_str(&project)?;
-
-    let path: PathBuf = [config_dir_str, &format!("{}.{}", name, EXTENSION)]
-        .iter()
-        .collect();
+    let path = get_configuration_file_path(name)?;
 
     load_path(path)
 }
@@ -261,14 +255,8 @@ pub fn load_path<T: Serialize + DeserializeOwned + Default>(
 /// encounters an operating system or environment it does
 /// not support.
 pub fn store<T: Serialize>(name: &str, cfg: T) -> Result<(), ConfyError> {
-    let project = ProjectDirs::from("rs", "", name).ok_or(ConfyError::BadConfigDirectoryStr)?;
-    fs::create_dir_all(project.config_dir()).map_err(ConfyError::DirectoryCreationFailed)?;
-
-    let config_dir_str = get_configuration_directory_str(&project)?;
-
-    let path: PathBuf = [config_dir_str, &format!("{}.{}", name, EXTENSION)]
-        .iter()
-        .collect();
+    let path = get_configuration_file_path(name)?;
+    fs::create_dir_all(&path).map_err(ConfyError::DirectoryCreationFailed)?;
 
     store_path(path, cfg)
 }
@@ -301,6 +289,24 @@ pub fn store_path<T: Serialize>(path: impl AsRef<Path>, cfg: T) -> Result<(), Co
     f.write_all(s.as_bytes())
         .map_err(ConfyError::WriteConfigurationFileError)?;
     Ok(())
+}
+
+/// Get the configuration file path used by [`load`] and [`store`]
+///
+/// This is useful if you want to show where the configuration file is to your user.
+///
+/// [`load`]: fn.load.html
+/// [`store`]: fn.store.html
+pub fn get_configuration_file_path(name: &str) -> Result<PathBuf, ConfyError> {
+    let project = ProjectDirs::from("rs", "", name).ok_or(ConfyError::BadConfigDirectoryStr)?;
+
+    let config_dir_str = get_configuration_directory_str(&project)?;
+
+    let path = [config_dir_str, &format!("{}.{}", name, EXTENSION)]
+        .iter()
+        .collect();
+
+    Ok(path)
 }
 
 fn get_configuration_directory_str(project: &ProjectDirs) -> Result<&str, ConfyError> {
