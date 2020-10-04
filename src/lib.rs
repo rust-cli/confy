@@ -73,21 +73,88 @@ use std::io::{ErrorKind::NotFound, Write};
 use std::path::{Path, PathBuf};
 
 #[cfg(not(any(feature = "toml_conf", feature = "yaml_conf")))]
-compile_error!("Exactly one config language feature must be enabled to use \
+compile_error!(
+    "Exactly one config language feature must be enabled to use \
 confy.  Please enable one of either the `toml_conf` or `yaml_conf` \
-features.");
+features."
+);
 
 #[cfg(all(feature = "toml_conf", feature = "yaml_conf"))]
-compile_error!("Exactly one config language feature must be enabled to compile \
+compile_error!(
+    "Exactly one config language feature must be enabled to compile \
 confy.  Please disable one of either the `toml_conf` or `yaml_conf` features. \
 NOTE: `toml_conf` is a default feature, so disabling it might mean switching off \
-default features for confy in your Cargo.toml");
+default features for confy in your Cargo.toml"
+);
 
-#[cfg(all(feature = "toml_conf", not(feature = "yaml_conf")))]
+#[cfg(feature = "toml_conf")]
 const EXTENSION: &str = "toml";
 
 #[cfg(feature = "yaml_conf")]
 const EXTENSION: &str = "yml";
+
+/// The errors the confy crate can encounter.
+#[derive(Debug)]
+pub enum ConfyError {
+    #[cfg(feature = "toml_conf")]
+    BadTomlData(toml::de::Error),
+
+    #[cfg(feature = "yaml_conf")]
+    BadYamlData(serde_yaml::Error),
+
+    DirectoryCreationFailed(std::io::Error),
+    GeneralLoadError(std::io::Error),
+    BadConfigDirectoryStr,
+
+    #[cfg(feature = "toml_conf")]
+    SerializeTomlError(toml::ser::Error),
+
+    #[cfg(feature = "yaml_conf")]
+    SerializeYamlError(serde_yaml::Error),
+
+    WriteConfigurationFileError(std::io::Error),
+    ReadConfigurationFileError(std::io::Error),
+    OpenConfigurationFileError(std::io::Error),
+}
+
+impl fmt::Display for ConfyError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            #[cfg(feature = "toml_conf")]
+            ConfyError::BadTomlData(e) => write!(f, "Bad TOML data: {}", e),
+            #[cfg(feature = "toml_conf")]
+            ConfyError::SerializeTomlError(_) => {
+                write!(f, "Failed to serialize configuration data into TOML.")
+            }
+
+            #[cfg(feature = "yaml_conf")]
+            ConfyError::BadYamlData(e) => write!(f, "Bad YAML data: {}", e),
+            #[cfg(feature = "yaml_conf")]
+            ConfyError::SerializeYamlError(_) => {
+                write!(f, "Failed to serialize configuration data into YAML.")
+            }
+
+            ConfyError::DirectoryCreationFailed(e) => {
+                write!(f, "Failed to create directory: {}", e)
+            }
+            ConfyError::GeneralLoadError(_) => write!(f, "Failed to load configuration file."),
+            ConfyError::BadConfigDirectoryStr => {
+                write!(f, "Failed to convert directory name to str.")
+            }
+            ConfyError::WriteConfigurationFileError(_) => {
+                write!(f, "Failed to write configuration file.")
+            }
+            ConfyError::ReadConfigurationFileError(_) => {
+                write!(f, "Failed to read configuration file.")
+            }
+            ConfyError::OpenConfigurationFileError(_) => {
+                write!(f, "Failed to open configuration file.")
+            }
+        }
+    }
+}
+
+impl Error for ConfyError {}
 
 /// Load an application configuration from disk
 ///
@@ -119,7 +186,9 @@ pub fn load<T: Serialize + DeserializeOwned + Default>(name: &str) -> Result<T, 
 
     let config_dir_str = get_configuration_directory_str(&project)?;
 
-    let path: PathBuf = [config_dir_str, &format!("{}.{}", name, EXTENSION)].iter().collect();
+    let path: PathBuf = [config_dir_str, &format!("{}.{}", name, EXTENSION)]
+        .iter()
+        .collect();
 
     load_path(path)
 }
@@ -131,27 +200,29 @@ pub fn load<T: Serialize + DeserializeOwned + Default>(name: &str) -> Result<T, 
 /// and behavior, see [`load`]'s documentation.
 ///
 /// [`load`]: fn.load.html
-pub fn load_path<T: Serialize + DeserializeOwned + Default>(path: impl AsRef<Path>) -> Result<T, ConfyError> {
+pub fn load_path<T: Serialize + DeserializeOwned + Default>(
+    path: impl AsRef<Path>,
+) -> Result<T, ConfyError> {
     match File::open(&path) {
         Ok(mut cfg) => {
             let cfg_string = cfg
                 .get_string()
                 .map_err(ConfyError::ReadConfigurationFileError)?;
 
-            #[cfg(feature = "toml_conf")] {
+            #[cfg(feature = "toml_conf")]
+            {
                 let cfg_data = toml::from_str(&cfg_string);
                 cfg_data.map_err(ConfyError::BadTomlData)
             }
-            #[cfg(feature = "yaml_conf")] {
+            #[cfg(feature = "yaml_conf")]
+            {
                 let cfg_data = serde_yaml::from_str(&cfg_string);
                 cfg_data.map_err(ConfyError::BadYamlData)
             }
-
         }
         Err(ref e) if e.kind() == NotFound => {
             if let Some(parent) = path.as_ref().parent() {
-                fs::create_dir_all(parent)
-                    .map_err(ConfyError::DirectoryCreationFailed)?;
+                fs::create_dir_all(parent).map_err(ConfyError::DirectoryCreationFailed)?;
             }
             store_path(path, T::default())?;
             Ok(T::default())
@@ -159,56 +230,6 @@ pub fn load_path<T: Serialize + DeserializeOwned + Default>(path: impl AsRef<Pat
         Err(e) => Err(ConfyError::GeneralLoadError(e)),
     }
 }
-
-/// The errors the confy crate can encounter.
-#[derive(Debug)]
-pub enum ConfyError {
-    #[cfg(feature = "toml_conf")]
-    BadTomlData(toml::de::Error),
-
-    #[cfg(feature = "yaml_conf")]
-    BadYamlData(serde_yaml::Error),
-
-    DirectoryCreationFailed(std::io::Error),
-    GeneralLoadError(std::io::Error),
-    BadConfigDirectoryStr,
-
-    #[cfg(feature = "toml_conf")]
-    SerializeTomlError(toml::ser::Error),
-
-    #[cfg(feature = "yaml_conf")]
-    SerializeYamlError(serde_yaml::Error),
-
-    WriteConfigurationFileError(std::io::Error),
-    ReadConfigurationFileError(std::io::Error),
-    OpenConfigurationFileError(std::io::Error),
-}
-
-impl fmt::Display for ConfyError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-
-            #[cfg(feature = "toml_conf")]
-            ConfyError::BadTomlData(e) => write!(f, "Bad TOML data: {}", e),
-            #[cfg(feature = "toml_conf")]
-            ConfyError::SerializeTomlError(_) => write!(f, "Failed to serialize configuration data into TOML."),
-
-            #[cfg(feature = "yaml_conf")]
-            ConfyError::BadYamlData(e) => write!(f, "Bad YAML data: {}", e),
-            #[cfg(feature = "yaml_conf")]
-            ConfyError::SerializeYamlError(_) => write!(f, "Failed to serialize configuration data into YAML."),
-
-            ConfyError::DirectoryCreationFailed(e) => write!(f, "Failed to create directory: {}", e),
-            ConfyError::GeneralLoadError(_) => write!(f, "Failed to load configuration file."),
-            ConfyError::BadConfigDirectoryStr => write!(f, "Failed to convert directory name to str."),
-            ConfyError::WriteConfigurationFileError(_) => write!(f, "Failed to write configuration file."),
-            ConfyError::ReadConfigurationFileError(_) => write!(f, "Failed to read configuration file."),
-            ConfyError::OpenConfigurationFileError(_) => write!(f, "Failed to open configuration file."),
-        }
-    }
-}
-
-impl Error for ConfyError {}
 
 /// Save changes made to a configuration object
 ///
@@ -244,7 +265,9 @@ pub fn store<T: Serialize>(name: &str, cfg: T) -> Result<(), ConfyError> {
 
     let config_dir_str = get_configuration_directory_str(&project)?;
 
-    let path: PathBuf = [config_dir_str, &format!("{}.{}", name, EXTENSION)].iter().collect();
+    let path: PathBuf = [config_dir_str, &format!("{}.{}", name, EXTENSION)]
+        .iter()
+        .collect();
 
     store_path(path, cfg)
 }
@@ -265,10 +288,12 @@ pub fn store_path<T: Serialize>(path: impl AsRef<Path>, cfg: T) -> Result<(), Co
         .map_err(ConfyError::OpenConfigurationFileError)?;
 
     let s;
-    #[cfg(feature = "toml_conf")] {
+    #[cfg(feature = "toml_conf")]
+    {
         s = toml::to_string_pretty(&cfg).map_err(ConfyError::SerializeTomlError)?;
     }
-   #[cfg(feature = "yaml_conf")] {
+    #[cfg(feature = "yaml_conf")]
+    {
         s = serde_yaml::to_string(&cfg).map_err(ConfyError::SerializeYamlError)?;
     }
 
