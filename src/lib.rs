@@ -189,6 +189,9 @@ pub fn load<T: Serialize + DeserializeOwned + Default>(name: &str) -> Result<T, 
 
 /// Load an application configuration from a specified path.
 ///
+/// A new configuration file is created with default values if none
+/// exists.
+///
 /// This is an alternate version of [`load`] that allows the specification of
 /// an aritrary path instead of a system one.  For more information on errors
 /// and behavior, see [`load`]'s documentation.
