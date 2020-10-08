@@ -23,7 +23,10 @@ impl Default for ConfyConfig {
 }
 
 fn main() -> Result<(), confy::ConfyError> {
-    let cfg: ConfyConfig = confy::load("confy_simple_app")?;
+    let cfg: ConfyConfig = confy::load("confy_simple_app", None)?;
+    let file = confy::get_configuration_file_path("confy_simple_app", None)?;
+    println!("The configuration file path is: {:#?}", file);
+    println!("The configuration is:");
     println!("{:#?}", cfg);
     Ok(())
 }

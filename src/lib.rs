@@ -177,12 +177,15 @@ impl Error for ConfyError {}
 /// #[derive(Default, Serialize, Deserialize)]
 /// struct MyConfig {}
 ///
-/// let cfg: MyConfig = confy::load("my-app-name")?;
+/// let cfg: MyConfig = confy::load("my-app-name", None)?;
 /// # Ok(())
 /// # }
 /// ```
-pub fn load<T: Serialize + DeserializeOwned + Default>(name: &str) -> Result<T, ConfyError> {
-    let path = get_configuration_file_path(name)?;
+pub fn load<'a, T: Serialize + DeserializeOwned + Default>(
+    app_name: &str,
+    config_name: impl Into<Option<&'a str>>,
+) -> Result<T, ConfyError> {
+    let path = get_configuration_file_path(app_name, config_name)?;
 
     load_path(path)
 }
@@ -248,7 +251,7 @@ pub fn load_path<T: Serialize + DeserializeOwned + Default>(
 /// struct MyConf {}
 ///
 /// let my_cfg = MyConf {};
-/// confy::store("my-app-name", my_cfg)?;
+/// confy::store("my-app-name", None, my_cfg)?;
 /// # Ok(())
 /// # }
 /// ```
@@ -257,8 +260,12 @@ pub fn load_path<T: Serialize + DeserializeOwned + Default>(
 /// able to write the configuration file or if `confy`
 /// encounters an operating system or environment it does
 /// not support.
-pub fn store<T: Serialize>(name: &str, cfg: T) -> Result<(), ConfyError> {
-    let path = get_configuration_file_path(name)?;
+pub fn store<'a, T: Serialize>(
+    app_name: &str,
+    config_name: impl Into<Option<&'a str>>,
+    cfg: T,
+) -> Result<(), ConfyError> {
+    let path = get_configuration_file_path(app_name, config_name)?;
     fs::create_dir_all(&path).map_err(ConfyError::DirectoryCreationFailed)?;
 
     store_path(path, cfg)
@@ -300,12 +307,16 @@ pub fn store_path<T: Serialize>(path: impl AsRef<Path>, cfg: T) -> Result<(), Co
 ///
 /// [`load`]: fn.load.html
 /// [`store`]: fn.store.html
-pub fn get_configuration_file_path(name: &str) -> Result<PathBuf, ConfyError> {
-    let project = ProjectDirs::from("rs", "", name).ok_or(ConfyError::BadConfigDirectoryStr)?;
+pub fn get_configuration_file_path<'a>(
+    app_name: &str,
+    config_name: impl Into<Option<&'a str>>,
+) -> Result<PathBuf, ConfyError> {
+    let config_name = config_name.into().unwrap_or("default-config");
+    let project = ProjectDirs::from("rs", "", app_name).ok_or(ConfyError::BadConfigDirectoryStr)?;
 
     let config_dir_str = get_configuration_directory_str(&project)?;
 
-    let path = [config_dir_str, &format!("{}.{}", name, EXTENSION)]
+    let path = [config_dir_str, &format!("{}.{}", config_name, EXTENSION)]
         .iter()
         .collect();
 
