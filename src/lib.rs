@@ -24,7 +24,7 @@
 //! This way you only need to worry about the layout of
 //! your configuration, not where and how to store it.
 //!
-//! [serde]: https://docs.rs/crates/serde
+//! [serde]: https://docs.rs/serde
 //!
 //! `confy` uses the [`Default`] trait in Rust to automatically
 //! create a new configuration, if none is available to read
