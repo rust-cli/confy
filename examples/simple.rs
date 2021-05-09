@@ -6,7 +6,6 @@ extern crate confy;
 extern crate serde_derive;
 
 use std::io::Read;
-use confy::ConfyError;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct ConfyConfig {
