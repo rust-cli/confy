@@ -266,7 +266,7 @@ pub fn store<'a, T: Serialize>(
     cfg: T,
 ) -> Result<(), ConfyError> {
     let path = get_configuration_file_path(app_name, config_name)?;
-    fs::create_dir_all(&path).map_err(ConfyError::DirectoryCreationFailed)?;
+    fs::create_dir_all(&path.parent().unwrap()).map_err(ConfyError::DirectoryCreationFailed)?;
 
     store_path(path, cfg)
 }

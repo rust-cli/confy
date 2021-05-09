@@ -5,6 +5,9 @@ extern crate confy;
 #[macro_use]
 extern crate serde_derive;
 
+use std::io::Read;
+use confy::ConfyError;
+
 #[derive(Debug, Serialize, Deserialize)]
 struct ConfyConfig {
     name: String,
@@ -28,5 +31,27 @@ fn main() -> Result<(), confy::ConfyError> {
     println!("The configuration file path is: {:#?}", file);
     println!("The configuration is:");
     println!("{:#?}", cfg);
+    println!("The wrote toml file content is:");
+    let mut content = String::new();
+    std::fs::File::open(&file)
+        .expect("Failed to read toml configuration file.")
+        .read_to_string(&mut content);
+    println!("{}", content);
+    let cfg = ConfyConfig {
+        name: "Test".to_string(),
+        ..cfg
+    };
+    confy::store("confy_simple_app",None, &cfg)?;
+    println!("The updated toml file content is:");
+    let mut content = String::new();
+    std::fs::File::open(&file)
+        .expect("Failed to read toml configuration file.")
+        .read_to_string(&mut content);
+    println!("{}", content);
+    let cfg = ConfyConfig {
+        name: "Test".to_string(),
+        ..cfg
+    };
+    std::fs::remove_dir_all(file.parent().unwrap());
     Ok(())
 }
