@@ -33,8 +33,9 @@ fn main() -> Result<(), confy::ConfyError> {
     println!("The wrote toml file content is:");
     let mut content = String::new();
     std::fs::File::open(&file)
-        .expect("Failed to read toml configuration file.")
-        .read_to_string(&mut content);
+        .expect("Failed to open toml configuration file.")
+        .read_to_string(&mut content)
+        .expect("Failed to read toml configuration file.");
     println!("{}", content);
     let cfg = ConfyConfig {
         name: "Test".to_string(),
@@ -44,13 +45,15 @@ fn main() -> Result<(), confy::ConfyError> {
     println!("The updated toml file content is:");
     let mut content = String::new();
     std::fs::File::open(&file)
-        .expect("Failed to read toml configuration file.")
-        .read_to_string(&mut content);
+        .expect("Failed to open toml configuration file.")
+        .read_to_string(&mut content)
+        .expect("Failed to read toml configuration file.");
     println!("{}", content);
-    let cfg = ConfyConfig {
+    let _cfg = ConfyConfig {
         name: "Test".to_string(),
         ..cfg
     };
-    std::fs::remove_dir_all(file.parent().unwrap());
+    std::fs::remove_dir_all(file.parent().unwrap())
+        .expect("Failed to remove directory");
     Ok(())
 }
