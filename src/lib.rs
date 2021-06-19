@@ -279,13 +279,6 @@ pub fn store<'a, T: Serialize>(
 ///
 /// [`store`]: fn.store.html
 pub fn store_path<T: Serialize>(path: impl AsRef<Path>, cfg: T) -> Result<(), ConfyError> {
-    let mut f = OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .open(path)
-        .map_err(ConfyError::OpenConfigurationFileError)?;
-
     let s;
     #[cfg(feature = "toml_conf")]
     {
@@ -295,6 +288,13 @@ pub fn store_path<T: Serialize>(path: impl AsRef<Path>, cfg: T) -> Result<(), Co
     {
         s = serde_yaml::to_string(&cfg).map_err(ConfyError::SerializeYamlError)?;
     }
+
+    let mut f = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(path)
+        .map_err(ConfyError::OpenConfigurationFileError)?;
 
     f.write_all(s.as_bytes())
         .map_err(ConfyError::WriteConfigurationFileError)?;
