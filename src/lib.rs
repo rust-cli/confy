@@ -87,11 +87,60 @@ NOTE: `toml_conf` is a default feature, so disabling it might mean switching off
 default features for confy in your Cargo.toml"
 );
 
+pub trait Format {
+    fn extension() -> &'static str;
+
+    fn deserialize<T, S>(cfg_string: S) -> Result<T, ConfyError>
+        where T: Serialize + DeserializeOwned + Default,
+              S: AsRef<str>;
+}
+
 #[cfg(feature = "toml_conf")]
-const EXTENSION: &str = "toml";
+mod format_toml {
+    use serde::{de::DeserializeOwned, Serialize};
+    use crate::ConfyError;
+    use crate::Format;
+
+    pub struct Toml;
+    impl Format for Toml {
+        fn extension() -> &'static str {
+            "toml"
+        }
+
+        fn deserialize<T, S>(cfg_string: S) -> Result<T, ConfyError>
+            where T: Serialize + DeserializeOwned + Default,
+                  S: AsRef<str>
+        {
+            toml::from_str(cfg_string.as_ref()).map_err(ConfyError::BadTomlData)
+        }
+    }
+}
+#[cfg(feature = "toml_conf")]
+pub use crate::format_toml::*;
 
 #[cfg(feature = "yaml_conf")]
-const EXTENSION: &str = "yml";
+mod format_yaml {
+    use serde::{de::DeserializeOwned, Serialize};
+    use crate::ConfyError;
+    use crate::Format;
+
+    pub struct Yaml;
+    impl Format for Yaml {
+        fn extension() -> &'static str {
+            "yml"
+        }
+
+        fn deserialize<T, S>(cfg_string: S) -> Result<T, ConfyError>
+            where T: Serialize + DeserializeOwned + Default,
+                  S: AsRef<str>
+        {
+            serde_yaml::from_str(cfg_string.as_ref()).map_err(ConfyError::BadYamlData)
+        }
+    }
+}
+#[cfg(feature = "yaml_conf")]
+pub use crate::format_yaml::*;
+
 
 /// The errors the confy crate can encounter.
 #[derive(Debug)]
@@ -181,11 +230,12 @@ impl Error for ConfyError {}
 /// # Ok(())
 /// # }
 /// ```
-pub fn load<'a, T: Serialize + DeserializeOwned + Default>(
-    app_name: &str,
-    config_name: impl Into<Option<&'a str>>,
-) -> Result<T, ConfyError> {
-    get_configuration_file_path(app_name, config_name).and_then(load_path)
+pub fn load<'a, F, T, C>(app_name: &str, config_name: C) -> Result<T, ConfyError>
+    where F: Format,
+          T: Serialize + DeserializeOwned + Default,
+          C: Into<Option<&'a str>>
+{
+    get_configuration_file_path::<F, C>(app_name, config_name).and_then(|p| load_path::<F, T, _>(p))
 }
 
 /// Load an application configuration from a specified path.
@@ -198,25 +248,16 @@ pub fn load<'a, T: Serialize + DeserializeOwned + Default>(
 /// and behavior, see [`load`]'s documentation.
 ///
 /// [`load`]: fn.load.html
-pub fn load_path<T: Serialize + DeserializeOwned + Default>(
-    path: impl AsRef<Path>,
-) -> Result<T, ConfyError> {
+pub fn load_path<F, T, P>(path: P) -> Result<T, ConfyError>
+    where F: Format,
+          T: Serialize + DeserializeOwned + Default,
+          P: AsRef<Path>
+{
     match File::open(&path) {
         Ok(mut cfg) => {
-            let cfg_string = cfg
-                .get_string()
-                .map_err(ConfyError::ReadConfigurationFileError)?;
-
-            #[cfg(feature = "toml_conf")]
-            {
-                let cfg_data = toml::from_str(&cfg_string);
-                cfg_data.map_err(ConfyError::BadTomlData)
-            }
-            #[cfg(feature = "yaml_conf")]
-            {
-                let cfg_data = serde_yaml::from_str(&cfg_string);
-                cfg_data.map_err(ConfyError::BadYamlData)
-            }
+            cfg.get_string()
+                .map_err(ConfyError::ReadConfigurationFileError)
+                .and_then(F::deserialize)
         }
         Err(ref e) if e.kind() == NotFound => {
             if let Some(parent) = path.as_ref().parent() {
@@ -258,12 +299,12 @@ pub fn load_path<T: Serialize + DeserializeOwned + Default>(
 /// able to write the configuration file or if `confy`
 /// encounters an operating system or environment it does
 /// not support.
-pub fn store<'a, T: Serialize>(
-    app_name: &str,
-    config_name: impl Into<Option<&'a str>>,
-    cfg: T,
-) -> Result<(), ConfyError> {
-    let path = get_configuration_file_path(app_name, config_name)?;
+pub fn store<'a, F, T, C>(app_name: &str, config_name: C, cfg: T) -> Result<(), ConfyError>
+    where F: Format,
+          T: Serialize,
+          C: Into<Option<&'a str>>,
+{
+    let path = get_configuration_file_path::<F, C>(app_name, config_name)?;
     fs::create_dir_all(&path.parent().unwrap()).map_err(ConfyError::DirectoryCreationFailed)?;
 
     store_path(path, cfg)
@@ -305,16 +346,16 @@ pub fn store_path<T: Serialize>(path: impl AsRef<Path>, cfg: T) -> Result<(), Co
 ///
 /// [`load`]: fn.load.html
 /// [`store`]: fn.store.html
-pub fn get_configuration_file_path<'a>(
-    app_name: &str,
-    config_name: impl Into<Option<&'a str>>,
-) -> Result<PathBuf, ConfyError> {
+pub fn get_configuration_file_path<'a, F, C>(app_name: &str, config_name: C) -> Result<PathBuf, ConfyError>
+    where F: Format,
+          C: Into<Option<&'a str>>
+{
     let config_name = config_name.into().unwrap_or("default-config");
     let project = ProjectDirs::from("rs", "", app_name).ok_or(ConfyError::BadConfigDirectoryStr)?;
 
     let config_dir_str = get_configuration_directory_str(&project)?;
 
-    let path = [config_dir_str, &format!("{}.{}", config_name, EXTENSION)]
+    let path = [config_dir_str, &format!("{}.{}", config_name, F::extension())]
         .iter()
         .collect();
 
