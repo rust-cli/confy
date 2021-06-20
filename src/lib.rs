@@ -185,9 +185,7 @@ pub fn load<'a, T: Serialize + DeserializeOwned + Default>(
     app_name: &str,
     config_name: impl Into<Option<&'a str>>,
 ) -> Result<T, ConfyError> {
-    let path = get_configuration_file_path(app_name, config_name)?;
-
-    load_path(path)
+    get_configuration_file_path(app_name, config_name).and_then(load_path)
 }
 
 /// Load an application configuration from a specified path.
