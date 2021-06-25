@@ -279,13 +279,6 @@ pub fn store<'a, T: Serialize>(
 ///
 /// [`store`]: fn.store.html
 pub fn store_path<T: Serialize>(path: impl AsRef<Path>, cfg: T) -> Result<(), ConfyError> {
-    let mut f = OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .open(path)
-        .map_err(ConfyError::OpenConfigurationFileError)?;
-
     let s;
     #[cfg(feature = "toml_conf")]
     {
@@ -295,6 +288,13 @@ pub fn store_path<T: Serialize>(path: impl AsRef<Path>, cfg: T) -> Result<(), Co
     {
         s = serde_yaml::to_string(&cfg).map_err(ConfyError::SerializeYamlError)?;
     }
+
+    let mut f = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .open(path)
+        .map_err(ConfyError::OpenConfigurationFileError)?;
 
     f.write_all(s.as_bytes())
         .map_err(ConfyError::WriteConfigurationFileError)?;
@@ -329,5 +329,69 @@ fn get_configuration_directory_str(project: &ProjectDirs) -> Result<&str, ConfyE
     match config_dir_option {
         Some(x) => Ok(x),
         None => Err(ConfyError::BadConfigDirectoryStr),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde::Serializer;
+
+    struct CannotSerialize;
+
+    impl Serialize for CannotSerialize {
+        fn serialize<S>(&self, _serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+        {
+            use serde::ser::Error;
+            Err(S::Error::custom("cannot serialize CannotSerialize"))
+        }
+    }
+
+    /// Verify that if you call store_path() with an object that fails to serialize,
+    /// the file on disk will not be overwritten or truncated.
+    #[test]
+    fn test_store_path() -> Result<(), ConfyError> {
+        let tmp = tempfile::NamedTempFile::new().expect("Failed to create NamedTempFile");
+        let path = tmp.path();
+        let message = "Hello world!";
+
+        // Write to file.
+        {
+            let mut f = OpenOptions::new()
+                .write(true)
+                .create(true)
+                .truncate(true)
+                .open(path)
+                .map_err(ConfyError::OpenConfigurationFileError)?;
+
+            f.write_all(message.as_bytes())
+                .map_err(ConfyError::WriteConfigurationFileError)?;
+
+            f.flush().map_err(ConfyError::WriteConfigurationFileError)?;
+        }
+
+        // Call store_path() to overwrite file with an object that fails to serialize.
+        let store_result = store_path(path, CannotSerialize);
+        assert!(matches!(store_result, Err(_)));
+
+        // Ensure file was not overwritten.
+        let buf = {
+            let mut f = OpenOptions::new()
+                .read(true)
+                .open(path)
+                .map_err(ConfyError::OpenConfigurationFileError)?;
+
+            let mut buf = String::new();
+
+            use std::io::Read;
+            f.read_to_string(&mut buf)
+                .map_err(ConfyError::ReadConfigurationFileError)?;
+            buf
+        };
+
+        assert_eq!(buf, message);
+        Ok(())
     }
 }
