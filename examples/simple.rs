@@ -25,8 +25,8 @@ impl Default for ConfyConfig {
 }
 
 fn main() -> Result<(), confy::ConfyError> {
-    let cfg: ConfyConfig = confy::load("confy_simple_app", None)?;
-    let file = confy::get_configuration_file_path("confy_simple_app", None)?;
+    let cfg: ConfyConfig = confy::load::<confy::Toml, _, _>("confy_simple_app", None)?;
+    let file = confy::get_configuration_file_path::<confy::Toml, _>("confy_simple_app", None)?;
     println!("The configuration file path is: {:#?}", file);
     println!("The configuration is:");
     println!("{:#?}", cfg);
@@ -41,7 +41,7 @@ fn main() -> Result<(), confy::ConfyError> {
         name: "Test".to_string(),
         ..cfg
     };
-    confy::store("confy_simple_app",None, &cfg)?;
+    confy::store::<confy::Toml, _, _>("confy_simple_app",None, &cfg)?;
     println!("The updated toml file content is:");
     let mut content = String::new();
     std::fs::File::open(&file)
