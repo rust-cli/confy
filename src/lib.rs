@@ -60,6 +60,12 @@
 //!
 //! [`store`]: fn.store.html
 //!
+//! Configuration files are stored in the expected place
+//! for your system. See the [directories] crate for more
+//! information.
+//!
+//! [directories]: https://docs.rs/directories
+//!
 
 mod utils;
 use utils::*;
