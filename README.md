@@ -22,12 +22,6 @@ fn main() -> Result<(), ::std::io::Error> {
 }
 ```
 
-Configuration files are stored in the expected place
-for your system. See the [directories] crate for more
-information.
-
-[directories]: https://docs.rs/directories
-
 ## Using yaml
 Enabling the `yaml_conf` feature while disabling the default `toml_conf`
 feature causes confy to use a YAML config file instead of TOML.
