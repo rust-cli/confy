@@ -5,7 +5,7 @@ authors = ["Katharina Fey <kookie@spacekookie.de>"]
 description = "Boilerplate-free configuration management"
 license = "MIT/X11 OR Apache-2.0"
 documentation = "https://docs.rs/confy"
-repository = "https://github.com/rust-clique/confy"
+repository = "https://github.com/rust-cli/confy"
 edition = "2018"
 
 [dependencies]
