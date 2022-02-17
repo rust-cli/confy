@@ -1,6 +1,8 @@
 # confy
 
-Chat with us: [Discord](https://discord.gg/dwq4Zme)
+[![crates.io](https://img.shields.io/crates/v/confy)](https://crates.io/crates/confy)
+[![docs.rs](https://img.shields.io/docsrs/confy)](https://docs.rs/confy/)
+[![Discord](https://img.shields.io/badge/chat-Discord-informational)](https://discord.gg/dwq4Zme)
 
 Zero-boilerplate configuration management.
 
