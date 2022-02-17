@@ -66,11 +66,10 @@ use utils::*;
 
 use directories_next::ProjectDirs;
 use serde::{de::DeserializeOwned, Serialize};
-use std::error::Error;
-use std::fmt;
 use std::fs::{self, File, OpenOptions};
 use std::io::{ErrorKind::NotFound, Write};
 use std::path::{Path, PathBuf};
+use thiserror::Error;
 
 #[cfg(not(any(feature = "toml_conf", feature = "yaml_conf")))]
 compile_error!(
@@ -94,67 +93,42 @@ const EXTENSION: &str = "toml";
 const EXTENSION: &str = "yml";
 
 /// The errors the confy crate can encounter.
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum ConfyError {
     #[cfg(feature = "toml_conf")]
-    BadTomlData(toml::de::Error),
+    #[error("Bad TOML data")]
+    BadTomlData(#[source] toml::de::Error),
 
     #[cfg(feature = "yaml_conf")]
-    BadYamlData(serde_yaml::Error),
+    #[error("Bad YAML data")]
+    BadYamlData(#[source] serde_yaml::Error),
 
-    DirectoryCreationFailed(std::io::Error),
-    GeneralLoadError(std::io::Error),
+    #[error("Failed to create directory")]
+    DirectoryCreationFailed(#[source] std::io::Error),
+
+    #[error("Failed to load configuration file")]
+    GeneralLoadError(#[source] std::io::Error),
+
+    #[error("Failed to convert directory name to str")]
     BadConfigDirectoryStr,
 
     #[cfg(feature = "toml_conf")]
-    SerializeTomlError(toml::ser::Error),
+    #[error("Failed to serialize configuration data into TOML")]
+    SerializeTomlError(#[source] toml::ser::Error),
 
     #[cfg(feature = "yaml_conf")]
-    SerializeYamlError(serde_yaml::Error),
+    #[error("Failed to serialize configuration data into YAML")]
+    SerializeYamlError(#[source] serde_yaml::Error),
 
-    WriteConfigurationFileError(std::io::Error),
-    ReadConfigurationFileError(std::io::Error),
-    OpenConfigurationFileError(std::io::Error),
+    #[error("Failed to write configuration file")]
+    WriteConfigurationFileError(#[source] std::io::Error),
+
+    #[error("Failed to read configuration file")]
+    ReadConfigurationFileError(#[source] std::io::Error),
+
+    #[error("Failed to open configuration file")]
+    OpenConfigurationFileError(#[source] std::io::Error),
 }
-
-impl fmt::Display for ConfyError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            #[cfg(feature = "toml_conf")]
-            ConfyError::BadTomlData(e) => write!(f, "Bad TOML data: {}", e),
-            #[cfg(feature = "toml_conf")]
-            ConfyError::SerializeTomlError(_) => {
-                write!(f, "Failed to serialize configuration data into TOML.")
-            }
-
-            #[cfg(feature = "yaml_conf")]
-            ConfyError::BadYamlData(e) => write!(f, "Bad YAML data: {}", e),
-            #[cfg(feature = "yaml_conf")]
-            ConfyError::SerializeYamlError(_) => {
-                write!(f, "Failed to serialize configuration data into YAML.")
-            }
-
-            ConfyError::DirectoryCreationFailed(e) => {
-                write!(f, "Failed to create directory: {}", e)
-            }
-            ConfyError::GeneralLoadError(_) => write!(f, "Failed to load configuration file."),
-            ConfyError::BadConfigDirectoryStr => {
-                write!(f, "Failed to convert directory name to str.")
-            }
-            ConfyError::WriteConfigurationFileError(_) => {
-                write!(f, "Failed to write configuration file.")
-            }
-            ConfyError::ReadConfigurationFileError(_) => {
-                write!(f, "Failed to read configuration file.")
-            }
-            ConfyError::OpenConfigurationFileError(_) => {
-                write!(f, "Failed to open configuration file.")
-            }
-        }
-    }
-}
-
-impl Error for ConfyError {}
 
 /// Load an application configuration from disk
 ///
