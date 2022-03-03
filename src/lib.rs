@@ -238,8 +238,6 @@ pub fn store<'a, T: Serialize>(
     cfg: T,
 ) -> Result<(), ConfyError> {
     let path = get_configuration_file_path(app_name, config_name)?;
-    fs::create_dir_all(&path.parent().unwrap()).map_err(ConfyError::DirectoryCreationFailed)?;
-
     store_path(path, cfg)
 }
 
@@ -251,6 +249,9 @@ pub fn store<'a, T: Serialize>(
 ///
 /// [`store`]: fn.store.html
 pub fn store_path<T: Serialize>(path: impl AsRef<Path>, cfg: T) -> Result<(), ConfyError> {
+    let path = path.as_ref();
+    fs::create_dir_all(path.parent().unwrap()).map_err(ConfyError::DirectoryCreationFailed)?;
+
     let s;
     #[cfg(feature = "toml_conf")]
     {
