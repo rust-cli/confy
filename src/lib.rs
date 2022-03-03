@@ -324,7 +324,7 @@ mod tests {
     /// Verify that if you call store_path() with an object that fails to serialize,
     /// the file on disk will not be overwritten or truncated.
     #[test]
-    fn test_store_path() -> Result<(), ConfyError> {
+    fn test_store_path_atomic() -> Result<(), ConfyError> {
         let tmp = tempfile::NamedTempFile::new().expect("Failed to create NamedTempFile");
         let path = tmp.path();
         let message = "Hello world!";
