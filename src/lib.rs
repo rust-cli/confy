@@ -308,6 +308,49 @@ fn get_configuration_directory_str(project: &ProjectDirs) -> Result<&str, ConfyE
 mod tests {
     use super::*;
     use serde::Serializer;
+    use serde_derive::{Deserialize, Serialize};
+
+    #[derive(PartialEq, Default, Debug, Serialize, Deserialize)]
+    struct ExampleConfig {
+        name: String,
+        count: usize,
+    }
+
+    /// Run a test function with a temporary config path as fixture.
+    fn with_config_path(test_fn: fn(&Path)) {
+        let config_dir = tempfile::tempdir().expect("creating test fixture failed");
+        // config_path should roughly correspond to the result of `get_configuration_file_path("example-app", "example-config")`
+        let config_path = config_dir
+            .path()
+            .join("example-app")
+            .join("example-config")
+            .with_extension(EXTENSION);
+        test_fn(&config_path);
+        config_dir.close().expect("removing test fixture failed");
+    }
+
+    /// [`load_path`] loads [`ExampleConfig`].
+    #[test]
+    fn load_path_works() {
+        with_config_path(|path| {
+            let config: ExampleConfig = load_path(path).expect("load_path failed");
+            assert_eq!(config, ExampleConfig::default());
+        })
+    }
+
+    /// [`store_path`] stores [`ExampleConfig`].
+    #[test]
+    fn test_store_path() {
+        with_config_path(|path| {
+            let config: ExampleConfig = ExampleConfig {
+                name: "Test".to_string(),
+                count: 42,
+            };
+            store_path(path, &config).expect("store_path failed");
+            let loaded = load_path(path).expect("load_path failed");
+            assert_eq!(config, loaded);
+        })
+    }
 
     struct CannotSerialize;
 
