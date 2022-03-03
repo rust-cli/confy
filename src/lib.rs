@@ -168,7 +168,7 @@ pub fn load<'a, T: Serialize + DeserializeOwned + Default>(
 /// exists.
 ///
 /// This is an alternate version of [`load`] that allows the specification of
-/// an aritrary path instead of a system one.  For more information on errors
+/// an arbitrary path instead of a system one.  For more information on errors
 /// and behavior, see [`load`]'s documentation.
 ///
 /// [`load`]: fn.load.html
@@ -246,7 +246,7 @@ pub fn store<'a, T: Serialize>(
 /// Save changes made to a configuration object at a specified path
 ///
 /// This is an alternate version of [`store`] that allows the specification of
-/// an aritrary path instead of a system one.  For more information on errors
+/// an arbitrary path instead of a system one.  For more information on errors
 /// and behavior, see [`store`]'s documentation.
 ///
 /// [`store`]: fn.store.html
