@@ -109,8 +109,8 @@ pub enum ConfyError {
     #[error("Failed to load configuration file")]
     GeneralLoadError(#[source] std::io::Error),
 
-    #[error("Failed to convert directory name to str")]
-    BadConfigDirectoryStr,
+    #[error("Bad configuration directory: {0}")]
+    BadConfigDirectory(String),
 
     #[cfg(feature = "toml_conf")]
     #[error("Failed to serialize configuration data into TOML")]
@@ -285,7 +285,9 @@ pub fn get_configuration_file_path<'a>(
     config_name: impl Into<Option<&'a str>>,
 ) -> Result<PathBuf, ConfyError> {
     let config_name = config_name.into().unwrap_or("default-config");
-    let project = ProjectDirs::from("rs", "", app_name).ok_or(ConfyError::BadConfigDirectoryStr)?;
+    let project = ProjectDirs::from("rs", "", app_name).ok_or_else(|| {
+        ConfyError::BadConfigDirectory("could not determine home directory path".to_string())
+    })?;
 
     let config_dir_str = get_configuration_directory_str(&project)?;
 
@@ -297,10 +299,9 @@ pub fn get_configuration_file_path<'a>(
 }
 
 fn get_configuration_directory_str(project: &ProjectDirs) -> Result<&str, ConfyError> {
-    project
-        .config_dir()
-        .to_str()
-        .ok_or(ConfyError::BadConfigDirectoryStr)
+    let path = project.config_dir();
+    path.to_str()
+        .ok_or_else(|| ConfyError::BadConfigDirectory(format!("{:?} is not valid Unicode", path)))
 }
 
 #[cfg(test)]
