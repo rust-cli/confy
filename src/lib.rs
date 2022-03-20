@@ -297,12 +297,10 @@ pub fn get_configuration_file_path<'a>(
 }
 
 fn get_configuration_directory_str(project: &ProjectDirs) -> Result<&str, ConfyError> {
-    let config_dir_option = project.config_dir().to_str();
-
-    match config_dir_option {
-        Some(x) => Ok(x),
-        None => Err(ConfyError::BadConfigDirectoryStr),
-    }
+    project
+        .config_dir()
+        .to_str()
+        .ok_or(ConfyError::BadConfigDirectoryStr)
 }
 
 #[cfg(test)]
