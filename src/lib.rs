@@ -250,7 +250,10 @@ pub fn store<'a, T: Serialize>(
 /// [`store`]: fn.store.html
 pub fn store_path<T: Serialize>(path: impl AsRef<Path>, cfg: T) -> Result<(), ConfyError> {
     let path = path.as_ref();
-    fs::create_dir_all(path.parent().unwrap()).map_err(ConfyError::DirectoryCreationFailed)?;
+    let config_dir = path
+        .parent()
+        .ok_or_else(|| ConfyError::BadConfigDirectory(format!("{:?} is a root or prefix", path)))?;
+    fs::create_dir_all(config_dir).map_err(ConfyError::DirectoryCreationFailed)?;
 
     let s;
     #[cfg(feature = "toml_conf")]
@@ -350,6 +353,17 @@ mod tests {
             let loaded = load_path(path).expect("load_path failed");
             assert_eq!(config, loaded);
         })
+    }
+
+    /// [`store_path`] fails when given a root path.
+    #[test]
+    fn test_store_path_root_error() {
+        let err = store_path(PathBuf::from("/"), &ExampleConfig::default())
+            .expect_err("store_path should fail");
+        assert_eq!(
+            err.to_string(),
+            r#"Bad configuration directory: "/" is a root or prefix"#,
+        )
     }
 
     struct CannotSerialize;
