@@ -141,7 +141,7 @@ pub enum ConfyError {
 /// that it does not support.
 ///
 /// **Note:** The type of configuration needs to be declared in some way
-/// that is inferrable by the compiler. Also note that your
+/// that is inferable by the compiler. Also note that your
 /// configuration needs to implement `Default`.
 ///
 /// ```rust,no_run
