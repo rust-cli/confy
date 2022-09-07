@@ -9,7 +9,7 @@ repository = "https://github.com/rust-cli/confy"
 edition = "2018"
 
 [dependencies]
-directories-next = "^2.0"
+directories = "^2.0"
 serde = "^1.0"
 serde_yaml = { version = "0.8", optional = true }
 thiserror = "1.0"
