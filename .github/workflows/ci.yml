@@ -5,14 +5,17 @@ name: CI
 jobs:
   check:
     name: Check
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         rust:
           - stable
           - beta
           - nightly
-
+        os:
+          - ubuntu-latest
+          - macOS-latest
+          - windows-latest
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
@@ -31,13 +34,17 @@ jobs:
   test:
     needs: [check]
     name: Test Suite
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         rust:
           - stable
           - beta
           - nightly
+        os:
+          - ubuntu-latest
+          - macOS-latest
+          - windows-latest
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
