@@ -64,7 +64,7 @@
 mod utils;
 use utils::*;
 
-use directories_next::ProjectDirs;
+use directories::ProjectDirs;
 use serde::{de::DeserializeOwned, Serialize};
 use std::fs::{self, File, OpenOptions};
 use std::io::{ErrorKind::NotFound, Write};
