@@ -36,7 +36,6 @@ default-features = false
 
 ## Breaking changes
 ### Version 0.5.0
-* As [`directories`] stopped being maintained we switch to [`directories-next`]. Both crates released a breaking change regarding default configuration path change on macos. For further information check their changelog.
 * The base functions `load` and `store` have been added an optional parameter in the event multiples configurations are needed, or ones with different filename.
 * The default configuration file is now named "default-config" instead of using the application's name. Put the second argument of `load` and `store` to be the same of the first one to keep the previous configuration file.
 * It is now possible to save the configuration as toml or as yaml. The configuration's file name's extension depends on the format used.
