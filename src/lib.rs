@@ -282,7 +282,8 @@ pub fn store_path<T: Serialize>(path: impl AsRef<Path>, cfg: T) -> Result<(), Co
     }
     #[cfg(feature = "ron_conf")]
     {
-        s = ron::to_string(&cfg).map_err(ConfyError::SerializeRonError)?;
+        let pretty_cfg = ron::ser::PrettyConfig::default().struct_names(true);
+        s = ron::ser::to_string_pretty(&cfg, pretty_cfg).map_err(ConfyError::SerializeRonError)?;
     }
 
     let mut f = OpenOptions::new()
