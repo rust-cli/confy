@@ -34,6 +34,16 @@ features = ["yaml_conf"]
 default-features = false
 ```
 
+## Using ron
+This works in the same way as using yaml. So enable the `ron_conf` feature
+flag and disable `toml_conf` to make confy use RON config files instead of TOML.
+
+```
+[dependencies.confy]
+features = ["ron_conf"]
+default-features = false
+```
+
 ## Breaking changes
 ### Version 0.5.0
 * The base functions `load` and `store` have been added an optional parameter in the event multiples configurations are needed, or ones with different filename.
