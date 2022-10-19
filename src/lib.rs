@@ -452,7 +452,7 @@ mod tests {
     // Verify that [`load_path`] can deserialize into structs with differing names
     // as long as they have the same fields
     #[test]
-    fn test_ron_change_struct_name() -> Result<(), ConfyError> {
+    fn test_change_struct_name() -> Result<(), ConfyError> {
         with_config_path(|path| {
             #[derive(PartialEq, Default, Debug, Serialize, Deserialize)]
             struct AnotherExampleConfig {
