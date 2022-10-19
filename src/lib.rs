@@ -195,17 +195,17 @@ pub fn load_path<T: Serialize + DeserializeOwned + Default>(
             #[cfg(feature = "toml_conf")]
             {
                 let cfg_data = toml::from_str(&cfg_string);
-                return cfg_data.map_err(ConfyError::BadTomlData);
+                cfg_data.map_err(ConfyError::BadTomlData)
             }
             #[cfg(feature = "yaml_conf")]
             {
                 let cfg_data = serde_yaml::from_str(&cfg_string);
-                return cfg_data.map_err(ConfyError::BadYamlData);
+                cfg_data.map_err(ConfyError::BadYamlData)
             }
             #[cfg(feature = "ron_conf")]
             {
                 let cfg_data = ron::from_str(&cfg_string);
-                return cfg_data.map_err(ConfyError::BadRonData);
+                cfg_data.map_err(ConfyError::BadRonData)
             }
         }
         Err(ref e) if e.kind() == NotFound => {
