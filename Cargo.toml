@@ -7,7 +7,7 @@ license = "MIT/X11 OR Apache-2.0"
 documentation = "https://docs.rs/confy"
 repository = "https://github.com/rust-cli/confy"
 readme = "README.md"
-edition = "2021"
+edition = "2018"
 
 [dependencies]
 ron = { version = "0.8.0", optional = true }
