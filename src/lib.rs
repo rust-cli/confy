@@ -78,7 +78,11 @@ confy.  Please enable one of either the `toml_conf`, `yaml_conf`, \
 or `ron_conf` features."
 );
 
-#[cfg(all(feature = "toml_conf", feature = "yaml_conf", feature = "ron_conf"))]
+#[cfg(any(
+    all(feature = "toml_conf", feature = "yaml_conf"),
+    all(feature = "toml_conf", feature = "ron_conf"),
+    all(feature = "ron_conf", feature = "yaml_conf"),
+))]
 compile_error!(
     "Exactly one config language feature must be enabled to compile \
 confy.  Please disable one of either the `toml_conf`, `yaml_conf`, or `ron_conf` features. \
