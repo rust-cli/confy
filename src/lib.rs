@@ -286,7 +286,7 @@ pub fn store_path<T: Serialize>(path: impl AsRef<Path>, cfg: T) -> Result<(), Co
     }
     #[cfg(feature = "ron_conf")]
     {
-        let pretty_cfg = ron::ser::PrettyConfig::default().struct_names(true);
+        let pretty_cfg = ron::ser::PrettyConfig::default();
         s = ron::ser::to_string_pretty(&cfg, pretty_cfg).map_err(ConfyError::SerializeRonError)?;
     }
 
