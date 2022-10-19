@@ -448,4 +448,22 @@ mod tests {
         assert_eq!(buf, message);
         Ok(())
     }
+
+    // Verify that [`load_path`] can deserialize into structs with differing names
+    // as long as they have the same fields
+    #[test]
+    fn test_ron_change_struct_name() -> Result<(), ConfyError> {
+        with_config_path(|path| {
+            #[derive(PartialEq, Default, Debug, Serialize, Deserialize)]
+            struct AnotherExampleConfig {
+                name: String,
+                count: usize,
+            }
+
+            store_path(path, &ExampleConfig::default()).expect("store_path failed");
+            let _: AnotherExampleConfig = load_path(path).expect("load_path failed");
+        });
+
+        Ok(())
+    }
 }
