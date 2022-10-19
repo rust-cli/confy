@@ -74,14 +74,14 @@ use thiserror::Error;
 #[cfg(not(any(feature = "toml_conf", feature = "yaml_conf", feature = "ron_conf")))]
 compile_error!(
     "Exactly one config language feature must be enabled to use \
-confy.  Please enable one of either the `toml_conf`, `yaml_conf` \
+confy.  Please enable one of either the `toml_conf`, `yaml_conf`, \
 or `ron_conf` features."
 );
 
 #[cfg(all(feature = "toml_conf", feature = "yaml_conf", feature = "ron_conf"))]
 compile_error!(
     "Exactly one config language feature must be enabled to compile \
-confy.  Please disable one of either the `toml_conf`, `yaml_conf` or `ron_conf` features. \
+confy.  Please disable one of either the `toml_conf`, `yaml_conf`, or `ron_conf` features. \
 NOTE: `toml_conf` is a default feature, so disabling it might mean switching off \
 default features for confy in your Cargo.toml"
 );
