@@ -27,7 +27,8 @@ fn main() -> Result<(), ::std::io::Error> {
 ## Confy's feature flags
 Confy can be used with either `TOML`, `YAML`, or `RON` files.
 `TOML` is the default language used with confy but any of the other languages can be used by enabling them with feature flags as shown below.
-Note that you can only use __one__ of these features at a time, so in order to use either of the optional features you have to disable default features.
+
+Note: you can only use __one__ of these features at a time, so in order to use either of the optional features you have to disable default features.
 
 ### Using yaml
 To use YAML files with confy you have to make sure you have enabled the `yaml_conf` feature and disabled both `toml_conf` and `ron_conf`.
