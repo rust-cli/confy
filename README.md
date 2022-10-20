@@ -24,13 +24,29 @@ fn main() -> Result<(), ::std::io::Error> {
 }
 ```
 
-## Using yaml
-Enabling the `yaml_conf` feature while disabling the default `toml_conf`
-feature causes confy to use a YAML config file instead of TOML.
+## Confy's feature flags
+Confy can be used with either `TOML`, `YAML`, or `RON` files.
+`TOML` is the default language used with confy but any of the other languages can be used by enabling them with feature flags as shown below.
 
-```
+Note: you can only use __one__ of these features at a time, so in order to use either of the optional features you have to disable default features.
+
+### Using yaml
+To use YAML files with confy you have to make sure you have enabled the `yaml_conf` feature and disabled both `toml_conf` and `ron_conf`.
+
+Enable the feature in `Cargo.toml`:
+```toml
 [dependencies.confy]
 features = ["yaml_conf"]
+default-features = false
+```
+
+### Using ron
+For using RON files with confy you have to make sure you have enabled the `ron_conf` feature and disabled both `toml_conf` and `yaml_conf`.
+
+Enable the feature in `Cargo.toml`:
+```toml
+[dependencies.confy]
+features = ["ron_conf"]
 default-features = false
 ```
 

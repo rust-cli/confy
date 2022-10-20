@@ -71,17 +71,21 @@ use std::io::{ErrorKind::NotFound, Write};
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
-#[cfg(not(any(feature = "toml_conf", feature = "yaml_conf")))]
+#[cfg(not(any(feature = "toml_conf", feature = "yaml_conf", feature = "ron_conf")))]
 compile_error!(
     "Exactly one config language feature must be enabled to use \
-confy.  Please enable one of either the `toml_conf` or `yaml_conf` \
-features."
+confy.  Please enable one of either the `toml_conf`, `yaml_conf`, \
+or `ron_conf` features."
 );
 
-#[cfg(all(feature = "toml_conf", feature = "yaml_conf"))]
+#[cfg(any(
+    all(feature = "toml_conf", feature = "yaml_conf"),
+    all(feature = "toml_conf", feature = "ron_conf"),
+    all(feature = "ron_conf", feature = "yaml_conf"),
+))]
 compile_error!(
     "Exactly one config language feature must be enabled to compile \
-confy.  Please disable one of either the `toml_conf` or `yaml_conf` features. \
+confy.  Please disable one of either the `toml_conf`, `yaml_conf`, or `ron_conf` features. \
 NOTE: `toml_conf` is a default feature, so disabling it might mean switching off \
 default features for confy in your Cargo.toml"
 );
@@ -91,6 +95,9 @@ const EXTENSION: &str = "toml";
 
 #[cfg(feature = "yaml_conf")]
 const EXTENSION: &str = "yml";
+
+#[cfg(feature = "ron_conf")]
+const EXTENSION: &str = "ron";
 
 /// The errors the confy crate can encounter.
 #[derive(Debug, Error)]
@@ -102,6 +109,10 @@ pub enum ConfyError {
     #[cfg(feature = "yaml_conf")]
     #[error("Bad YAML data")]
     BadYamlData(#[source] serde_yaml::Error),
+
+    #[cfg(feature = "ron_conf")]
+    #[error("Bad RON data")]
+    BadRonData(#[source] ron::error::SpannedError),
 
     #[error("Failed to create directory")]
     DirectoryCreationFailed(#[source] std::io::Error),
@@ -119,6 +130,10 @@ pub enum ConfyError {
     #[cfg(feature = "yaml_conf")]
     #[error("Failed to serialize configuration data into YAML")]
     SerializeYamlError(#[source] serde_yaml::Error),
+
+    #[cfg(feature = "ron_conf")]
+    #[error("Failed to serialize configuration data into RON")]
+    SerializeRonError(#[source] ron::error::Error),
 
     #[error("Failed to write configuration file")]
     WriteConfigurationFileError(#[source] std::io::Error),
@@ -190,6 +205,11 @@ pub fn load_path<T: Serialize + DeserializeOwned + Default>(
             {
                 let cfg_data = serde_yaml::from_str(&cfg_string);
                 cfg_data.map_err(ConfyError::BadYamlData)
+            }
+            #[cfg(feature = "ron_conf")]
+            {
+                let cfg_data = ron::from_str(&cfg_string);
+                cfg_data.map_err(ConfyError::BadRonData)
             }
         }
         Err(ref e) if e.kind() == NotFound => {
@@ -263,6 +283,11 @@ pub fn store_path<T: Serialize>(path: impl AsRef<Path>, cfg: T) -> Result<(), Co
     #[cfg(feature = "yaml_conf")]
     {
         s = serde_yaml::to_string(&cfg).map_err(ConfyError::SerializeYamlError)?;
+    }
+    #[cfg(feature = "ron_conf")]
+    {
+        let pretty_cfg = ron::ser::PrettyConfig::default();
+        s = ron::ser::to_string_pretty(&cfg, pretty_cfg).map_err(ConfyError::SerializeRonError)?;
     }
 
     let mut f = OpenOptions::new()
@@ -421,6 +446,24 @@ mod tests {
         };
 
         assert_eq!(buf, message);
+        Ok(())
+    }
+
+    // Verify that [`load_path`] can deserialize into structs with differing names
+    // as long as they have the same fields
+    #[test]
+    fn test_change_struct_name() -> Result<(), ConfyError> {
+        with_config_path(|path| {
+            #[derive(PartialEq, Default, Debug, Serialize, Deserialize)]
+            struct AnotherExampleConfig {
+                name: String,
+                count: usize,
+            }
+
+            store_path(path, &ExampleConfig::default()).expect("store_path failed");
+            let _: AnotherExampleConfig = load_path(path).expect("load_path failed");
+        });
+
         Ok(())
     }
 }
