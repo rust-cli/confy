@@ -27,8 +27,8 @@ Serde is a required dependancy, and can be added with either the serde_derive cr
 
 ```toml
 [dependencies]
-serde = { version = "1.0.152", features = ["derive"] } # Only one serde needed
-serde_derive = "1.0.152" # Only one serde needed
+serde = { version = "1.0.152", features = ["derive"] } # <- Only one serde version needed (serde or serd_derive)
+serde_derive = "1.0.152" # <- Only one serde version needed (serde or serd_derive)
 confy = "^0.5"
 ```
 
