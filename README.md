@@ -23,6 +23,15 @@ fn main() -> Result<(), ::std::io::Error> {
     Ok(())
 }
 ```
+Serde is a required dependancy, and can be added with either the serde_derive crate or serde vrate with feature derive as shown below
+
+```toml
+[dependencies]
+serde = { version = "1.0.152", features = ["derive"] } # Only one serde needed
+serde_derive = "1.0.152" # Only one serde needed
+confy = "^0.5"
+```
+
 
 ## Confy's feature flags
 Confy can be used with either `TOML`, `YAML`, or `RON` files.
