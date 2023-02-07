@@ -50,7 +50,7 @@ features = ["ron_conf"]
 default-features = false
 ```
 
-### Changing error messages
+## Changing error messages
 Information about adding context to error messages can be found at [Providing Context](https://rust-cli.github.io/book/tutorial/errors.html#providing-context)
 
 ## Breaking changes
