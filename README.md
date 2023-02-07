@@ -23,7 +23,7 @@ fn main() -> Result<(), ::std::io::Error> {
     Ok(())
 }
 ```
-Serde is a required dependancy, and can be added with either the serde_derive crate or serde vrate with feature derive as shown below
+Serde is a required dependency, and can be added with either the `serde_derive` crate or `serde` crate with feature derive as shown below
 
 ```toml
 [dependencies]
