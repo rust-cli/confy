@@ -272,7 +272,7 @@ pub fn store_path<T: Serialize>(path: impl AsRef<Path>, cfg: T) -> Result<(), Co
     let path = path.as_ref();
     let config_dir = path
         .parent()
-        .ok_or_else(|| ConfyError::BadConfigDirectory(format!("{:?} is a root or prefix", path)))?;
+        .ok_or_else(|| ConfyError::BadConfigDirectory(format!("{path:?} is a root or prefix")))?;
     fs::create_dir_all(config_dir).map_err(ConfyError::DirectoryCreationFailed)?;
 
     let s;
@@ -319,7 +319,7 @@ pub fn get_configuration_file_path<'a>(
 
     let config_dir_str = get_configuration_directory_str(&project)?;
 
-    let path = [config_dir_str, &format!("{}.{}", config_name, EXTENSION)]
+    let path = [config_dir_str, &format!("{config_name}.{EXTENSION}")]
         .iter()
         .collect();
 
@@ -329,7 +329,7 @@ pub fn get_configuration_file_path<'a>(
 fn get_configuration_directory_str(project: &ProjectDirs) -> Result<&str, ConfyError> {
     let path = project.config_dir();
     path.to_str()
-        .ok_or_else(|| ConfyError::BadConfigDirectory(format!("{:?} is not valid Unicode", path)))
+        .ok_or_else(|| ConfyError::BadConfigDirectory(format!("{path:?} is not valid Unicode")))
 }
 
 #[cfg(test)]
