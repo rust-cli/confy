@@ -50,6 +50,9 @@ features = ["ron_conf"]
 default-features = false
 ```
 
+## Changing error messages
+Information about adding context to error messages can be found at [Providing Context](https://rust-cli.github.io/book/tutorial/errors.html#providing-context)
+
 ## Breaking changes
 ### Version 0.5.0
 * The base functions `load` and `store` have been added an optional parameter in the event multiples configurations are needed, or ones with different filename.
