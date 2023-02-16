@@ -56,6 +56,13 @@
 //! }
 //! ```
 //!
+//! Serde is a required dependency, and can be added with either the `serde_derive` crate or `serde` crate with feature derive as shown below
+//!```toml,no_run
+//![dependencies]
+//!serde = { version = "1.0.152", features = ["derive"] } # <- Only one serde version needed (serde or serde_derive)
+//!serde_derive = "1.0.152" # <- Only one serde version needed (serde or serde_derive)
+//!confy = "^0.5"
+//!```
 //! Updating the configuration is then done via the [`store`] function.
 //!
 //! [`store`]: fn.store.html
