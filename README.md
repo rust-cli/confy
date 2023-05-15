@@ -17,7 +17,7 @@ struct MyConfig {
     api_key: String,
 }
 
-fn main() -> Result<(), ::std::io::Error> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cfg: MyConfig = confy::load("my-app-name", None)?;
     dbg!(cfg);
     Ok(())
