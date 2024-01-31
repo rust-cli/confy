@@ -75,6 +75,6 @@ Before version 0.4.0, the configuration file was written in the current director
 ## License
 
 This work is triple-licensed under MIT, MIT/X11, or the Apache 2.0 (or any later version).
-You can choose between one of them if you use this work.
+You may choose any one of these three licenses if you use this work.
 
 `SPDX-License-Identifier: MIT OR X11 OR Apache-2.0+`
