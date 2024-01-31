@@ -72,3 +72,9 @@ Before version 0.4.0, the configuration file was written in the current director
 [`directories`]: https://crates.io/crates/directories
 [`directories-next`]: https://crates.io/crates/directories-next
 
+## License
+
+This work is triple-licensed under MIT, MIT/X11, or the Apache 2.0 (or any later version).
+You may choose any one of these three licenses if you use this work.
+
+`SPDX-License-Identifier: MIT OR X11 OR Apache-2.0+`
