@@ -73,7 +73,7 @@ use utils::*;
 
 use directories::ProjectDirs;
 use serde::{de::DeserializeOwned, Serialize};
-use std::fs::{self, File, OpenOptions};
+use std::fs::{self, File, OpenOptions, Permissions};
 use std::io::{ErrorKind::NotFound, Write};
 use std::path::{Path, PathBuf};
 use thiserror::Error;
@@ -150,6 +150,9 @@ pub enum ConfyError {
 
     #[error("Failed to open configuration file")]
     OpenConfigurationFileError(#[source] std::io::Error),
+
+    #[error("Failed to set configuration file permissions")]
+    SetPermissionsFileError(#[source] std::io::Error),
 }
 
 /// Load an application configuration from disk
@@ -271,12 +274,51 @@ pub fn store<'a, T: Serialize>(
 /// Save changes made to a configuration object at a specified path
 ///
 /// This is an alternate version of [`store`] that allows the specification of
+/// file permissions that must be set. For more information on errors and
+/// behavior, see [`store`]'s documentation.
+///
+/// [`store`]: fn.store.html
+pub fn store_perms<'a, T: Serialize>(
+    app_name: &str,
+    config_name: impl Into<Option<&'a str>>,
+    cfg: T,
+    perms: Permissions,
+) -> Result<(), ConfyError> {
+    let path = get_configuration_file_path(app_name, config_name)?;
+    store_path_perms(path, cfg, perms)
+}
+
+/// Save changes made to a configuration object at a specified path
+///
+/// This is an alternate version of [`store`] that allows the specification of
 /// an arbitrary path instead of a system one.  For more information on errors
 /// and behavior, see [`store`]'s documentation.
 ///
 /// [`store`]: fn.store.html
 pub fn store_path<T: Serialize>(path: impl AsRef<Path>, cfg: T) -> Result<(), ConfyError> {
-    let path = path.as_ref();
+    do_store(path.as_ref(), cfg, None)
+}
+
+/// Save changes made to a configuration object at a specified path
+///
+/// This is an alternate version of [`store_path`] that allows the
+/// specification of file permissions that must be set. For more information on
+/// errors and behavior, see [`store`]'s documentation.
+///
+/// [`store_path`]: fn.store_path.html
+pub fn store_path_perms<T: Serialize>(
+    path: impl AsRef<Path>,
+    cfg: T,
+    perms: Permissions,
+) -> Result<(), ConfyError> {
+    do_store(path.as_ref(), cfg, Some(perms))
+}
+
+fn do_store<T: Serialize>(
+    path: &Path,
+    cfg: T,
+    perms: Option<Permissions>,
+) -> Result<(), ConfyError> {
     let config_dir = path
         .parent()
         .ok_or_else(|| ConfyError::BadConfigDirectory(format!("{path:?} is a root or prefix")))?;
@@ -303,6 +345,11 @@ pub fn store_path<T: Serialize>(path: impl AsRef<Path>, cfg: T) -> Result<(), Co
         .truncate(true)
         .open(path)
         .map_err(ConfyError::OpenConfigurationFileError)?;
+
+    if let Some(p) = perms {
+        f.set_permissions(p)
+            .map_err(ConfyError::SetPermissionsFileError)?;
+    }
 
     f.write_all(s.as_bytes())
         .map_err(ConfyError::WriteConfigurationFileError)?;
@@ -345,6 +392,9 @@ mod tests {
     use serde::Serializer;
     use serde_derive::{Deserialize, Serialize};
 
+    #[cfg(unix)]
+    use std::os::unix::fs::PermissionsExt;
+
     #[derive(PartialEq, Default, Debug, Serialize, Deserialize)]
     struct ExampleConfig {
         name: String,
@@ -384,6 +434,45 @@ mod tests {
             store_path(path, &config).expect("store_path failed");
             let loaded = load_path(path).expect("load_path failed");
             assert_eq!(config, loaded);
+        })
+    }
+
+    /// [`store_path_perms`] stores [`ExampleConfig`], with only read permission for owner (UNIX).
+    #[test]
+    #[cfg(unix)]
+    fn test_store_path_perms() {
+        with_config_path(|path| {
+            let config: ExampleConfig = ExampleConfig {
+                name: "Secret".to_string(),
+                count: 16549,
+            };
+            store_path_perms(path, &config, Permissions::from_mode(0o600))
+                .expect("store_path_perms failed");
+            let loaded = load_path(path).expect("load_path failed");
+            assert_eq!(config, loaded);
+        })
+    }
+
+    /// [`store_path_perms`] stores [`ExampleConfig`], as read-only.
+    #[test]
+    fn test_store_path_perms_readonly() {
+        with_config_path(|path| {
+            let config: ExampleConfig = ExampleConfig {
+                name: "Soon read-only".to_string(),
+                count: 27115,
+            };
+            store_path(path, &config).expect("store_path failed");
+
+            let metadata = fs::metadata(path).expect("reading metadata failed");
+            let mut permissions = metadata.permissions();
+            permissions.set_readonly(true);
+
+            store_path_perms(path, &config, permissions).expect("store_path_perms failed");
+
+            assert!(fs::metadata(path)
+                .expect("reading metadata failed")
+                .permissions()
+                .readonly());
         })
     }
 
