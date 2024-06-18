@@ -234,6 +234,61 @@ pub fn load_path<T: Serialize + DeserializeOwned + Default>(
     }
 }
 
+/// Load an application configuration from a specified path.
+///
+/// A new configuration file is created with `op`'s result if none
+/// exists or file content is incorrect.
+///
+/// This is an alternate version of [`load`] that allows the specification of
+/// an arbitrary path instead of a system one.  For more information on errors
+/// and behavior, see [`load`]'s documentation.
+///
+/// [`load`]: fn.load.html
+pub fn load_or_else<T, F>(path: impl AsRef<Path>, op: F) -> Result<T, ConfyError>
+where
+    T: DeserializeOwned + Serialize,
+    F: FnOnce() -> T,
+{
+    let path_ref = path.as_ref();
+    let load_value = || {
+        let cfg = op();
+        if let Some(parent) = path.as_ref().parent() {
+            fs::create_dir_all(parent).map_err(ConfyError::DirectoryCreationFailed)?;
+        }
+        store_path(path_ref, &cfg)?;
+        Ok(cfg)
+    };
+
+    match File::open(path_ref) {
+        Ok(mut cfg) => {
+            let mut load_from_file = || {
+                let cfg_string = cfg
+                    .get_string()
+                    .map_err(ConfyError::ReadConfigurationFileError)?;
+
+                #[cfg(feature = "toml_conf")]
+                {
+                    let cfg_data = toml::from_str(&cfg_string);
+                    cfg_data.map_err(ConfyError::BadTomlData)
+                }
+                #[cfg(feature = "yaml_conf")]
+                {
+                    let cfg_data = serde_yaml::from_str(&cfg_string);
+                    cfg_data.map_err(ConfyError::BadYamlData)
+                }
+                #[cfg(feature = "ron_conf")]
+                {
+                    let cfg_data = ron::from_str(&cfg_string);
+                    cfg_data.map_err(ConfyError::BadRonData)
+                }
+            };
+            load_from_file().or_else(|_| load_value())
+        }
+        Err(ref e) if e.kind() == NotFound => load_value(),
+        Err(e) => Err(ConfyError::GeneralLoadError(e)),
+    }
+}
+
 /// Save changes made to a configuration object
 ///
 /// This function will update a configuration,
@@ -420,6 +475,36 @@ mod tests {
         with_config_path(|path| {
             let config: ExampleConfig = load_path(path).expect("load_path failed");
             assert_eq!(config, ExampleConfig::default());
+        })
+    }
+
+    /// [`load_or_else`] loads [`ExampleConfig`].
+    #[test]
+    fn load_or_else_works() {
+        with_config_path(|path| {
+            let the_value = || ExampleConfig {
+                name: "a".to_string(),
+                count: 5,
+            };
+
+            let config: ExampleConfig = load_or_else(path, the_value).expect("load_or_else failed");
+            assert_eq!(config, the_value());
+        });
+
+        with_config_path(|path| {
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            let mut file = File::create(path).expect("creating file failed");
+            file.write("some normal text".as_bytes())
+                .expect("write to file failed");
+            drop(file);
+
+            let the_value = || ExampleConfig {
+                name: "a".to_string(),
+                count: 5,
+            };
+
+            let config: ExampleConfig = load_or_else(path, the_value).expect("load_or_else failed");
+            assert_eq!(config, the_value());
         })
     }
 
