@@ -115,7 +115,7 @@ pub enum ConfyError {
 
     #[cfg(feature = "yaml_conf")]
     #[error("Bad YAML data")]
-    BadYamlData(#[source] serde_yaml::Error),
+    BadYamlData(#[source] serde_yml::Error),
 
     #[cfg(feature = "ron_conf")]
     #[error("Bad RON data")]
@@ -136,7 +136,7 @@ pub enum ConfyError {
 
     #[cfg(feature = "yaml_conf")]
     #[error("Failed to serialize configuration data into YAML")]
-    SerializeYamlError(#[source] serde_yaml::Error),
+    SerializeYamlError(#[source] serde_yml::Error),
 
     #[cfg(feature = "ron_conf")]
     #[error("Failed to serialize configuration data into RON")]
@@ -213,7 +213,7 @@ pub fn load_path<T: Serialize + DeserializeOwned + Default>(
             }
             #[cfg(feature = "yaml_conf")]
             {
-                let cfg_data = serde_yaml::from_str(&cfg_string);
+                let cfg_data = serde_yml::from_str(&cfg_string);
                 cfg_data.map_err(ConfyError::BadYamlData)
             }
             #[cfg(feature = "ron_conf")]
@@ -273,7 +273,7 @@ where
                 }
                 #[cfg(feature = "yaml_conf")]
                 {
-                    let cfg_data = serde_yaml::from_str(&cfg_string);
+                    let cfg_data = serde_yml::from_str(&cfg_string);
                     cfg_data.map_err(ConfyError::BadYamlData)
                 }
                 #[cfg(feature = "ron_conf")]
@@ -386,7 +386,7 @@ fn do_store<T: Serialize>(
     }
     #[cfg(feature = "yaml_conf")]
     {
-        s = serde_yaml::to_string(&cfg).map_err(ConfyError::SerializeYamlError)?;
+        s = serde_yml::to_string(&cfg).map_err(ConfyError::SerializeYamlError)?;
     }
     #[cfg(feature = "ron_conf")]
     {
