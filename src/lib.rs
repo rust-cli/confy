@@ -51,7 +51,7 @@
 //! }
 //!
 //! fn main() -> Result<(), confy::ConfyError> {
-//!     let cfg = confy::load("my-app-name", None)?;
+//!     let cfg: MyConfig = confy::load("my-app-name", None)?;
 //!     Ok(())
 //! }
 //! ```
