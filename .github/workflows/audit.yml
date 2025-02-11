@@ -20,10 +20,6 @@ jobs:
         with:
           toolchain: stable
 
-      - name: Install Cargo Audit
-        run: cargo install cargo-audit --locked
-        shell: bash
-     
       - name: Setup Cache
         uses: actions/cache@v4
         with:
@@ -34,6 +30,10 @@ jobs:
             ~/.cargo/git/db/
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install Cargo Audit
+        run: cargo install cargo-audit --locked
+        shell: bash
 
       - name: Run Audit
         run: cargo audit
