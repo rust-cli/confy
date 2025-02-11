@@ -14,12 +14,26 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
+      
       - name: Install toolchain
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: stable
+
       - name: Install Cargo Audit
         run: cargo install cargo-audit --locked
         shell: bash
+     
+      - name: Setup Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
       - name: Run Audit
         run: cargo audit
