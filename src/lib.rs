@@ -78,7 +78,12 @@ use std::io::{ErrorKind::NotFound, Write};
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
-#[cfg(not(any(feature = "toml_conf", feature = "yaml_conf", feature = "ron_conf")))]
+#[cfg(not(any(
+    feature = "toml_conf",
+    feature = "basic_toml_conf",
+    feature = "yaml_conf",
+    feature = "ron_conf"
+)))]
 compile_error!(
     "Exactly one config language feature must be enabled to use \
 confy.  Please enable one of either the `toml_conf`, `yaml_conf`, \
@@ -86,18 +91,24 @@ or `ron_conf` features."
 );
 
 #[cfg(any(
-    all(feature = "toml_conf", feature = "yaml_conf"),
-    all(feature = "toml_conf", feature = "ron_conf"),
+    all(
+        any(feature = "toml_conf", feature = "basic_toml_conf"),
+        feature = "yaml_conf"
+    ),
+    all(
+        any(feature = "toml_conf", feature = "basic_toml_conf"),
+        feature = "ron_conf"
+    ),
     all(feature = "ron_conf", feature = "yaml_conf"),
 ))]
 compile_error!(
     "Exactly one config language feature must be enabled to compile \
-confy.  Please disable one of either the `toml_conf`, `yaml_conf`, or `ron_conf` features. \
+confy.  Please disable one of either the `toml_conf`, `basic_toml_conf`, `yaml_conf`, or `ron_conf` features. \
 NOTE: `toml_conf` is a default feature, so disabling it might mean switching off \
 default features for confy in your Cargo.toml"
 );
 
-#[cfg(feature = "toml_conf")]
+#[cfg(any(feature = "toml_conf", feature = "basic_toml_conf"))]
 const EXTENSION: &str = "toml";
 
 #[cfg(feature = "yaml_conf")]
@@ -110,6 +121,10 @@ const EXTENSION: &str = "ron";
 #[derive(Debug, Error)]
 pub enum ConfyError {
     #[cfg(feature = "toml_conf")]
+    #[error("Bad TOML data")]
+    BadTomlData(#[source] toml::de::Error),
+
+    #[cfg(feature = "basic_toml_conf")]
     #[error("Bad TOML data")]
     BadTomlData(#[source] basic_toml::Error),
 
@@ -131,6 +146,10 @@ pub enum ConfyError {
     BadConfigDirectory(String),
 
     #[cfg(feature = "toml_conf")]
+    #[error("Failed to serialize configuration data into TOML")]
+    SerializeTomlError(#[source] toml::ser::Error),
+
+    #[cfg(feature = "basic_toml_conf")]
     #[error("Failed to serialize configuration data into TOML")]
     SerializeTomlError(#[source] basic_toml::Error),
 
@@ -208,6 +227,11 @@ pub fn load_path<T: Serialize + DeserializeOwned + Default>(
 
             #[cfg(feature = "toml_conf")]
             {
+                let cfg_data = toml::from_str(&cfg_string);
+                cfg_data.map_err(ConfyError::BadTomlData)
+            }
+            #[cfg(feature = "basic_toml_conf")]
+            {
                 let cfg_data = basic_toml::from_str(&cfg_string);
                 cfg_data.map_err(ConfyError::BadTomlData)
             }
@@ -267,6 +291,11 @@ where
                     .map_err(ConfyError::ReadConfigurationFileError)?;
 
                 #[cfg(feature = "toml_conf")]
+                {
+                    let cfg_data = toml::from_str(&cfg_string);
+                    cfg_data.map_err(ConfyError::BadTomlData)
+                }
+                #[cfg(feature = "basic_toml_conf")]
                 {
                     let cfg_data = basic_toml::from_str(&cfg_string);
                     cfg_data.map_err(ConfyError::BadTomlData)
@@ -381,6 +410,10 @@ fn do_store<T: Serialize>(
 
     let s;
     #[cfg(feature = "toml_conf")]
+    {
+        s = toml::to_string(&cfg).map_err(ConfyError::SerializeTomlError)?;
+    }
+    #[cfg(feature = "basic_toml_conf")]
     {
         s = basic_toml::to_string(&cfg).map_err(ConfyError::SerializeTomlError)?;
     }

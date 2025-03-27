@@ -16,10 +16,12 @@ serde = "^1.0"
 serde_yaml = { version = "0.9", optional = true }
 thiserror = "2.0"
 basic-toml = { version = "0.1.10", optional = true }
+toml = { version = "0.8", optional = true }
 
 [features]
 default = ["toml_conf"]
-toml_conf = ["basic-toml"]
+toml_conf = ["toml"]
+basic_toml_conf = ["basic-toml"]
 yaml_conf = ["serde_yaml"]
 ron_conf = ["ron"]
 
