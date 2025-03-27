@@ -15,11 +15,11 @@ directories = "6"
 serde = "^1.0"
 serde_yaml = { version = "0.9", optional = true }
 thiserror = "2.0"
-toml = { version = "0.8", optional = true }
+basic-toml = { version = "0.1.10", optional = true }
 
 [features]
 default = ["toml_conf"]
-toml_conf = ["toml"]
+toml_conf = ["basic-toml"]
 yaml_conf = ["serde_yaml"]
 ron_conf = ["ron"]
 

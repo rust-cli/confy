@@ -111,7 +111,7 @@ const EXTENSION: &str = "ron";
 pub enum ConfyError {
     #[cfg(feature = "toml_conf")]
     #[error("Bad TOML data")]
-    BadTomlData(#[source] toml::de::Error),
+    BadTomlData(#[source] basic_toml::Error),
 
     #[cfg(feature = "yaml_conf")]
     #[error("Bad YAML data")]
@@ -132,7 +132,7 @@ pub enum ConfyError {
 
     #[cfg(feature = "toml_conf")]
     #[error("Failed to serialize configuration data into TOML")]
-    SerializeTomlError(#[source] toml::ser::Error),
+    SerializeTomlError(#[source] basic_toml::Error),
 
     #[cfg(feature = "yaml_conf")]
     #[error("Failed to serialize configuration data into YAML")]
@@ -208,7 +208,7 @@ pub fn load_path<T: Serialize + DeserializeOwned + Default>(
 
             #[cfg(feature = "toml_conf")]
             {
-                let cfg_data = toml::from_str(&cfg_string);
+                let cfg_data = basic_toml::from_str(&cfg_string);
                 cfg_data.map_err(ConfyError::BadTomlData)
             }
             #[cfg(feature = "yaml_conf")]
@@ -268,7 +268,7 @@ where
 
                 #[cfg(feature = "toml_conf")]
                 {
-                    let cfg_data = toml::from_str(&cfg_string);
+                    let cfg_data = basic_toml::from_str(&cfg_string);
                     cfg_data.map_err(ConfyError::BadTomlData)
                 }
                 #[cfg(feature = "yaml_conf")]
@@ -382,7 +382,7 @@ fn do_store<T: Serialize>(
     let s;
     #[cfg(feature = "toml_conf")]
     {
-        s = toml::to_string_pretty(&cfg).map_err(ConfyError::SerializeTomlError)?;
+        s = basic_toml::to_string(&cfg).map_err(ConfyError::SerializeTomlError)?;
     }
     #[cfg(feature = "yaml_conf")]
     {
