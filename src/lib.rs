@@ -61,12 +61,35 @@
 //![dependencies]
 //!serde = { version = "1.0.152", features = ["derive"] } # <- Only one serde version needed (serde or serde_derive)
 //!serde_derive = "1.0.152" # <- Only one serde version needed (serde or serde_derive)
-//!confy = "^0.5"
+//!confy = "^0.6"
 //!```
 //! Updating the configuration is then done via the [`store`] function.
 //!
 //! [`store`]: fn.store.html
 //!
+//! ## Features
+//!
+//! Exactly **one** of the features has to be enabled from the following table.
+//!
+//! ### Tip
+//! to add this crate to your project with the default, toml config do the following: `cargo add confy`, otherwise do something like: `cargo add confy --no-default-features --features yaml_conf`, for more info, see [cargo docs on features]
+//! 
+//! [cargo docs on features]: https://docs.rust-lang.org/cargo/reference/resolver.html#features
+//! 
+//! feature | file format | description
+//! ------- | ----------- | -----------
+//! **default**: `toml_conf` | [toml] | considered a reasonable default, uses the standard-compliant [`toml` crate]
+//! `yaml_conf` | [yaml] | uses the [`serde_yaml` crate]
+//! `ron_conf` | [ron] | Rusty Object Notation, uses the [`ron` crate]
+//! `basic_toml_conf` | [toml] | alternative to the default `toml_conf`, instead of using the [`toml` crate], the [`basic_toml` crate] is used, in order to cut down on the number of dependencies, speed up compilation and shrink binary size. **_DISCLAIMER_**: this crate is **not** standard compliant, **nor** maintained, otherwise should work fine in most situations.
+//!
+//! [toml]: https://toml.io
+//! [`toml` crate]: https://docs.rs/toml
+//! [yaml]: https://yaml.org
+//! [`serde_yaml` crate]: https://docs.rs/serde_yaml
+//! [ron]: https://docs.rs/ron
+//! [`ron` crate]: https://docs.rs/ron
+//! [`basic_toml` crate]: https://docs.rs/basic_toml
 
 mod utils;
 use utils::*;
