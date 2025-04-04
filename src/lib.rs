@@ -78,6 +78,18 @@ use std::io::{ErrorKind::NotFound, Write};
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
+#[cfg(feature = "toml_conf")]
+use toml::{
+    de::Error as TomlDeErr, from_str as toml_from_str, ser::Error as TomlSerErr,
+    to_string_pretty as toml_to_string_pretty,
+};
+
+#[cfg(feature = "basic_toml_conf")]
+use basic_toml::{
+    from_str as toml_from_str, to_string as toml_to_string_pretty, Error as TomlDeErr,
+    Error as TomlSerErr,
+};
+
 #[cfg(not(any(
     feature = "toml_conf",
     feature = "basic_toml_conf",
@@ -120,13 +132,9 @@ const EXTENSION: &str = "ron";
 /// The errors the confy crate can encounter.
 #[derive(Debug, Error)]
 pub enum ConfyError {
-    #[cfg(feature = "toml_conf")]
+    #[cfg(any(feature = "toml_conf", feature = "basic_toml_conf"))]
     #[error("Bad TOML data")]
-    BadTomlData(#[source] toml::de::Error),
-
-    #[cfg(feature = "basic_toml_conf")]
-    #[error("Bad TOML data")]
-    BadTomlData(#[source] basic_toml::Error),
+    BadTomlData(#[source] TomlDeErr),
 
     #[cfg(feature = "yaml_conf")]
     #[error("Bad YAML data")]
@@ -145,13 +153,9 @@ pub enum ConfyError {
     #[error("Bad configuration directory: {0}")]
     BadConfigDirectory(String),
 
-    #[cfg(feature = "toml_conf")]
+    #[cfg(any(feature = "toml_conf", feature = "basic_toml_conf"))]
     #[error("Failed to serialize configuration data into TOML")]
-    SerializeTomlError(#[source] toml::ser::Error),
-
-    #[cfg(feature = "basic_toml_conf")]
-    #[error("Failed to serialize configuration data into TOML")]
-    SerializeTomlError(#[source] basic_toml::Error),
+    SerializeTomlError(#[source] TomlSerErr),
 
     #[cfg(feature = "yaml_conf")]
     #[error("Failed to serialize configuration data into YAML")]
@@ -225,14 +229,9 @@ pub fn load_path<T: Serialize + DeserializeOwned + Default>(
                 .get_string()
                 .map_err(ConfyError::ReadConfigurationFileError)?;
 
-            #[cfg(feature = "toml_conf")]
+            #[cfg(any(feature = "toml_conf", feature = "basic_toml_conf"))]
             {
-                let cfg_data = toml::from_str(&cfg_string);
-                cfg_data.map_err(ConfyError::BadTomlData)
-            }
-            #[cfg(feature = "basic_toml_conf")]
-            {
-                let cfg_data = basic_toml::from_str(&cfg_string);
+                let cfg_data = toml_from_str(&cfg_string);
                 cfg_data.map_err(ConfyError::BadTomlData)
             }
             #[cfg(feature = "yaml_conf")]
@@ -290,14 +289,9 @@ where
                     .get_string()
                     .map_err(ConfyError::ReadConfigurationFileError)?;
 
-                #[cfg(feature = "toml_conf")]
+                #[cfg(any(feature = "toml_conf", feature = "basic_toml_conf"))]
                 {
-                    let cfg_data = toml::from_str(&cfg_string);
-                    cfg_data.map_err(ConfyError::BadTomlData)
-                }
-                #[cfg(feature = "basic_toml_conf")]
-                {
-                    let cfg_data = basic_toml::from_str(&cfg_string);
+                    let cfg_data = toml_from_str(&cfg_string);
                     cfg_data.map_err(ConfyError::BadTomlData)
                 }
                 #[cfg(feature = "yaml_conf")]
@@ -409,13 +403,9 @@ fn do_store<T: Serialize>(
     fs::create_dir_all(config_dir).map_err(ConfyError::DirectoryCreationFailed)?;
 
     let s;
-    #[cfg(feature = "toml_conf")]
+    #[cfg(any(feature = "toml_conf", feature = "basic_toml_conf"))]
     {
-        s = toml::to_string(&cfg).map_err(ConfyError::SerializeTomlError)?;
-    }
-    #[cfg(feature = "basic_toml_conf")]
-    {
-        s = basic_toml::to_string(&cfg).map_err(ConfyError::SerializeTomlError)?;
+        s = toml_to_string_pretty(&cfg).map_err(ConfyError::SerializeTomlError)?;
     }
     #[cfg(feature = "yaml_conf")]
     {
