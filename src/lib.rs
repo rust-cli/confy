@@ -98,11 +98,12 @@ use basic_toml::{
 )))]
 compile_error!(
     "Exactly one config language feature must be enabled to use \
-confy.  Please enable one of either the `toml_conf`, `yaml_conf`, \
-or `ron_conf` features."
+confy. Please enable one of either the `toml_conf`, `yaml_conf`, \
+, `ron_conf` or `toml_basic_conf` features."
 );
 
 #[cfg(any(
+    all(feature = "toml_conf", feature = "basic_toml_conf"),
     all(
         any(feature = "toml_conf", feature = "basic_toml_conf"),
         feature = "yaml_conf"
