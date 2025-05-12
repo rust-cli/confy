@@ -1,13 +1,13 @@
 [package]
 name = "confy"
-version = "0.6.1"
+version = "1.0.0"
 authors = ["Katharina Fey <kookie@spacekookie.de>"]
 description = "Boilerplate-free configuration management"
 license = "MIT/X11 OR Apache-2.0"
 documentation = "https://docs.rs/confy"
 repository = "https://github.com/rust-cli/confy"
 readme = "README.md"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 ron = { version = "0.10.1", optional = true }
