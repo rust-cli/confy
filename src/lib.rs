@@ -73,9 +73,9 @@
 //!
 //! ### Tip
 //! to add this crate to your project with the default, toml config do the following: `cargo add confy`, otherwise do something like: `cargo add confy --no-default-features --features yaml_conf`, for more info, see [cargo docs on features]
-//! 
+//!
 //! [cargo docs on features]: https://docs.rust-lang.org/cargo/reference/resolver.html#features
-//! 
+//!
 //! feature | file format | description
 //! ------- | ----------- | -----------
 //! **default**: `toml_conf` | [toml] | considered a reasonable default, uses the standard-compliant [`toml` crate]
@@ -94,8 +94,12 @@
 mod utils;
 use utils::*;
 
-use directories::ProjectDirs;
-use serde::{de::DeserializeOwned, Serialize};
+#[cfg(feature = "xdg")]
+use etcetera::app_strategy::choose_app_strategy;
+#[cfg(not(feature = "xdg"))]
+use etcetera::app_strategy::choose_native_strategy;
+use etcetera::{AppStrategy, AppStrategyArgs};
+use serde::{Serialize, de::DeserializeOwned};
 use std::fs::{self, File, OpenOptions, Permissions};
 use std::io::{ErrorKind::NotFound, Write};
 use std::path::{Path, PathBuf};
@@ -109,8 +113,8 @@ use toml::{
 
 #[cfg(feature = "basic_toml_conf")]
 use basic_toml::{
-    from_str as toml_from_str, to_string as toml_to_string_pretty, Error as TomlDeErr,
-    Error as TomlSerErr,
+    Error as TomlDeErr, Error as TomlSerErr, from_str as toml_from_str,
+    to_string as toml_to_string_pretty,
 };
 
 #[cfg(not(any(
@@ -469,23 +473,49 @@ pub fn get_configuration_file_path<'a>(
     config_name: impl Into<Option<&'a str>>,
 ) -> Result<PathBuf, ConfyError> {
     let config_name = config_name.into().unwrap_or("default-config");
-    let project = ProjectDirs::from("rs", "", app_name).ok_or_else(|| {
-        ConfyError::BadConfigDirectory("could not determine home directory path".to_string())
-    })?;
+    let project;
+
+    #[cfg(not(feature = "xdg"))]
+    {
+        project = choose_native_strategy(AppStrategyArgs {
+            top_level_domain: "rs".to_string(),
+            author: "".to_string(),
+            app_name: app_name.to_string(),
+        })
+        .map_err(|e| {
+            ConfyError::BadConfigDirectory(format!("could not determine home directory path: {e}"))
+        })?;
+    }
+
+    #[cfg(feature = "xdg")]
+    {
+        project = choose_app_strategy(AppStrategyArgs {
+            top_level_domain: "rs".to_string(),
+            author: "".to_string(),
+            app_name: app_name.to_string(),
+        })
+        .map_err(|e| {
+            ConfyError::BadConfigDirectory(format!("could not determine home directory path: {e}"))
+        })?;
+    }
 
     let config_dir_str = get_configuration_directory_str(&project)?;
 
-    let path = [config_dir_str, &format!("{config_name}.{EXTENSION}")]
+    let path = [config_dir_str, format!("{config_name}.{EXTENSION}")]
         .iter()
         .collect();
 
     Ok(path)
 }
 
-fn get_configuration_directory_str(project: &ProjectDirs) -> Result<&str, ConfyError> {
-    let path = project.config_dir();
-    path.to_str()
-        .ok_or_else(|| ConfyError::BadConfigDirectory(format!("{path:?} is not valid Unicode")))
+fn get_configuration_directory_str(project: &impl AppStrategy) -> Result<String, ConfyError> {
+    let path = if cfg!(feature = "xdg") {
+        project.config_dir()
+    } else {
+        project.data_dir()
+    };
+
+    Ok(format!("{}", path.display()))
 }
 
 #[cfg(test)]
@@ -601,10 +631,12 @@ mod tests {
 
             store_path_perms(path, &config, permissions).expect("store_path_perms failed");
 
-            assert!(fs::metadata(path)
-                .expect("reading metadata failed")
-                .permissions()
-                .readonly());
+            assert!(
+                fs::metadata(path)
+                    .expect("reading metadata failed")
+                    .permissions()
+                    .readonly()
+            );
         })
     }
 

@@ -11,7 +11,7 @@ edition = "2024"
 
 [dependencies]
 ron = { version = "0.10.1", optional = true }
-directories = "6"
+etcetera = "0.10.0"
 serde = "^1.0"
 serde_yaml = { version = "0.9", optional = true }
 thiserror = "2.0"
@@ -24,6 +24,7 @@ toml_conf = ["toml"]
 basic_toml_conf = ["basic-toml"]
 yaml_conf = ["serde_yaml"]
 ron_conf = ["ron"]
+xdg = []
 
 [[example]]
 name = "simple"
