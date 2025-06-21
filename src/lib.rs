@@ -73,15 +73,16 @@
 //!
 //! ### Tip
 //! to add this crate to your project with the default, toml config do the following: `cargo add confy`, otherwise do something like: `cargo add confy --no-default-features --features yaml_conf`, for more info, see [cargo docs on features]
-//! 
+//!
 //! [cargo docs on features]: https://docs.rust-lang.org/cargo/reference/resolver.html#features
-//! 
+//!
 //! feature | file format | description
 //! ------- | ----------- | -----------
 //! **default**: `toml_conf` | [toml] | considered a reasonable default, uses the standard-compliant [`toml` crate]
 //! `yaml_conf` | [yaml] | uses the [`serde_yaml` crate]
 //! `ron_conf` | [ron] | Rusty Object Notation, uses the [`ron` crate]
 //! `basic_toml_conf` | [toml] | alternative to the default `toml_conf`, instead of using the [`toml` crate], the [`basic_toml` crate] is used, in order to cut down on the number of dependencies, speed up compilation and shrink binary size. **_DISCLAIMER_**: this crate is **not** standard compliant, **nor** maintained, otherwise should work fine in most situations.
+//! `json_conf` | [json] | uses the [`serde_json` crate]
 //!
 //! [toml]: https://toml.io
 //! [`toml` crate]: https://docs.rs/toml
@@ -90,12 +91,13 @@
 //! [ron]: https://docs.rs/ron
 //! [`ron` crate]: https://docs.rs/ron
 //! [`basic_toml` crate]: https://docs.rs/basic_toml
+//! [`serde_json` crate]: https://docs.rs/serde_json
 
 mod utils;
 use utils::*;
 
 use directories::ProjectDirs;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use std::fs::{self, File, OpenOptions, Permissions};
 use std::io::{ErrorKind::NotFound, Write};
 use std::path::{Path, PathBuf};
@@ -109,33 +111,36 @@ use toml::{
 
 #[cfg(feature = "basic_toml_conf")]
 use basic_toml::{
-    from_str as toml_from_str, to_string as toml_to_string_pretty, Error as TomlDeErr,
-    Error as TomlSerErr,
+    Error as TomlDeErr, Error as TomlSerErr, from_str as toml_from_str,
+    to_string as toml_to_string_pretty,
 };
 
 #[cfg(not(any(
     feature = "toml_conf",
     feature = "basic_toml_conf",
     feature = "yaml_conf",
-    feature = "ron_conf"
+    feature = "ron_conf",
+    feature = "json_conf"
 )))]
 compile_error!(
     "Exactly one config language feature must be enabled to use \
 confy. Please enable one of either the `toml_conf`, `yaml_conf`, \
-, `ron_conf` or `toml_basic_conf` features."
+, `ron_conf`, `json_conf`, or `toml_basic_conf` features."
 );
 
 #[cfg(any(
     all(feature = "toml_conf", feature = "basic_toml_conf"),
     all(
         any(feature = "toml_conf", feature = "basic_toml_conf"),
-        feature = "yaml_conf"
+        feature = "yaml_conf",
+        feature = "json_conf"
     ),
     all(
         any(feature = "toml_conf", feature = "basic_toml_conf"),
-        feature = "ron_conf"
+        feature = "ron_conf",
+        feature = "json_conf"
     ),
-    all(feature = "ron_conf", feature = "yaml_conf"),
+    all(feature = "ron_conf", feature = "yaml_conf", feature = "json_conf"),
 ))]
 compile_error!(
     "Exactly one config language feature must be enabled to compile \
@@ -153,6 +158,9 @@ const EXTENSION: &str = "yml";
 #[cfg(feature = "ron_conf")]
 const EXTENSION: &str = "ron";
 
+#[cfg(feature = "json_conf")]
+const EXTENSION: &str = "json";
+
 /// The errors the confy crate can encounter.
 #[derive(Debug, Error)]
 pub enum ConfyError {
@@ -167,6 +175,10 @@ pub enum ConfyError {
     #[cfg(feature = "ron_conf")]
     #[error("Bad RON data")]
     BadRonData(#[source] ron::error::SpannedError),
+
+    #[cfg(feature = "json_conf")]
+    #[error("Bad JSON data")]
+    BadJsonData(#[source] serde_json::Error),
 
     #[error("Failed to create directory")]
     DirectoryCreationFailed(#[source] std::io::Error),
@@ -188,6 +200,10 @@ pub enum ConfyError {
     #[cfg(feature = "ron_conf")]
     #[error("Failed to serialize configuration data into RON")]
     SerializeRonError(#[source] ron::error::Error),
+
+    #[cfg(feature = "json_conf")]
+    #[error("Failed to serialize configuration data into JSON")]
+    SerializeJsonError(#[source] serde_json::Error),
 
     #[error("Failed to write configuration file")]
     WriteConfigurationFileError(#[source] std::io::Error),
@@ -268,6 +284,11 @@ pub fn load_path<T: Serialize + DeserializeOwned + Default>(
                 let cfg_data = ron::from_str(&cfg_string);
                 cfg_data.map_err(ConfyError::BadRonData)
             }
+            #[cfg(feature = "json_conf")]
+            {
+                let cfg_data = serde_json::from_str(&cfg_string);
+                cfg_data.map_err(ConfyError::BadJsonData)
+            }
         }
         Err(ref e) if e.kind() == NotFound => {
             if let Some(parent) = path.as_ref().parent() {
@@ -327,6 +348,11 @@ where
                 {
                     let cfg_data = ron::from_str(&cfg_string);
                     cfg_data.map_err(ConfyError::BadRonData)
+                }
+                #[cfg(feature = "json_conf")]
+                {
+                    let cfg_data = serde_json::from_str(&cfg_string);
+                    cfg_data.map_err(ConfyError::BadJsonData)
                 }
             };
             load_from_file().or_else(|_| load_value())
@@ -441,6 +467,11 @@ fn do_store<T: Serialize>(
         s = ron::ser::to_string_pretty(&cfg, pretty_cfg).map_err(ConfyError::SerializeRonError)?;
     }
 
+    #[cfg(feature = "json_conf")]
+    {
+        s = serde_json::to_string_pretty(&cfg).map_err(ConfyError::SerializeJsonError)?;
+    }
+
     let mut f = OpenOptions::new()
         .write(true)
         .create(true)
@@ -541,6 +572,7 @@ mod tests {
         with_config_path(|path| {
             fs::create_dir_all(path.parent().unwrap()).unwrap();
             let mut file = File::create(path).expect("creating file failed");
+            #[allow(clippy::unused_io_amount)]
             file.write("some normal text".as_bytes())
                 .expect("write to file failed");
             drop(file);
@@ -601,17 +633,19 @@ mod tests {
 
             store_path_perms(path, &config, permissions).expect("store_path_perms failed");
 
-            assert!(fs::metadata(path)
-                .expect("reading metadata failed")
-                .permissions()
-                .readonly());
+            assert!(
+                fs::metadata(path)
+                    .expect("reading metadata failed")
+                    .permissions()
+                    .readonly()
+            );
         })
     }
 
     /// [`store_path`] fails when given a root path.
     #[test]
     fn test_store_path_root_error() {
-        let err = store_path(PathBuf::from("/"), &ExampleConfig::default())
+        let err = store_path(PathBuf::from("/"), ExampleConfig::default())
             .expect_err("store_path should fail");
         assert_eq!(
             err.to_string(),
@@ -656,7 +690,7 @@ mod tests {
 
         // Call store_path() to overwrite file with an object that fails to serialize.
         let store_result = store_path(path, CannotSerialize);
-        assert!(matches!(store_result, Err(_)));
+        assert!(store_result.is_err());
 
         // Ensure file was not overwritten.
         let buf = {
@@ -688,7 +722,7 @@ mod tests {
                 count: usize,
             }
 
-            store_path(path, &ExampleConfig::default()).expect("store_path failed");
+            store_path(path, ExampleConfig::default()).expect("store_path failed");
             let _: AnotherExampleConfig = load_path(path).expect("load_path failed");
         });
 
