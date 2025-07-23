@@ -94,11 +94,7 @@
 mod utils;
 use utils::*;
 
-#[cfg(feature = "xdg")]
-use etcetera::app_strategy::choose_app_strategy;
-#[cfg(not(feature = "xdg"))]
-use etcetera::app_strategy::choose_native_strategy;
-use etcetera::{AppStrategy, AppStrategyArgs};
+use etcetera::{AppStrategy, AppStrategyArgs, app_strategy::choose_app_strategy};
 use serde::{Serialize, de::DeserializeOwned};
 use std::fs::{self, File, OpenOptions, Permissions};
 use std::io::{ErrorKind::NotFound, Write};
@@ -473,31 +469,14 @@ pub fn get_configuration_file_path<'a>(
     config_name: impl Into<Option<&'a str>>,
 ) -> Result<PathBuf, ConfyError> {
     let config_name = config_name.into().unwrap_or("default-config");
-    let project;
-
-    #[cfg(not(feature = "xdg"))]
-    {
-        project = choose_native_strategy(AppStrategyArgs {
-            top_level_domain: "rs".to_string(),
-            author: "".to_string(),
-            app_name: app_name.to_string(),
-        })
-        .map_err(|e| {
-            ConfyError::BadConfigDirectory(format!("could not determine home directory path: {e}"))
-        })?;
-    }
-
-    #[cfg(feature = "xdg")]
-    {
-        project = choose_app_strategy(AppStrategyArgs {
-            top_level_domain: "rs".to_string(),
-            author: "".to_string(),
-            app_name: app_name.to_string(),
-        })
-        .map_err(|e| {
-            ConfyError::BadConfigDirectory(format!("could not determine home directory path: {e}"))
-        })?;
-    }
+    let project = choose_app_strategy(AppStrategyArgs {
+        top_level_domain: "rs".to_string(),
+        author: "".to_string(),
+        app_name: app_name.to_string(),
+    })
+    .map_err(|e| {
+        ConfyError::BadConfigDirectory(format!("could not determine home directory path: {e}"))
+    })?;
 
     let config_dir_str = get_configuration_directory_str(&project)?;
 
@@ -509,13 +488,7 @@ pub fn get_configuration_file_path<'a>(
 }
 
 fn get_configuration_directory_str(project: &impl AppStrategy) -> Result<String, ConfyError> {
-    let path = if cfg!(feature = "xdg") {
-        project.config_dir()
-    } else {
-        project.data_dir()
-    };
-
-    Ok(format!("{}", path.display()))
+    Ok(project.config_dir().display().to_string())
 }
 
 #[cfg(test)]

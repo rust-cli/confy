@@ -1,6 +1,6 @@
 [package]
 name = "confy"
-version = "1.0.0"
+version = "2.0.0"
 authors = ["Katharina Fey <kookie@spacekookie.de>"]
 description = "Boilerplate-free configuration management"
 license = "MIT/X11 OR Apache-2.0"
@@ -16,7 +16,7 @@ serde = "^1.0"
 serde_yaml = { version = "0.9", optional = true }
 thiserror = "2.0"
 basic-toml = { version = "0.1.10", optional = true }
-toml = { version = "0.8", optional = true }
+toml = { version = "0.9", optional = true }
 
 [features]
 default = ["toml_conf"]
@@ -24,7 +24,6 @@ toml_conf = ["toml"]
 basic_toml_conf = ["basic-toml"]
 yaml_conf = ["serde_yaml"]
 ron_conf = ["ron"]
-xdg = []
 
 [[example]]
 name = "simple"
