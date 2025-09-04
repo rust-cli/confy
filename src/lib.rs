@@ -722,6 +722,85 @@ mod tests {
         })
     }
 
+    #[test]
+    fn test_store_path_change() {
+        // change the strategy first to native
+        change_config_strategy(ConfigStrategy::Native);
+
+        with_config_path(|path| {
+            let config: ExampleConfig = ExampleConfig {
+                name: "Test".to_string(),
+                count: 42,
+            };
+
+            let file_path = get_configuration_file_path("example-app", "example-config").unwrap();
+
+            if cfg!(target_os = "macos") {
+                assert_eq!(
+                    file_path,
+                    Path::new(&format!(
+                        "{}/Library/Preferences/rs.example-app/example-config.toml",
+                        std::env::home_dir().unwrap().display()
+                    )),
+                );
+            } else if cfg!(target_os = "linux") {
+                assert_eq!(
+                    file_path,
+                    Path::new(&format!(
+                        "{}/.config/example-app/example-config.toml",
+                        std::env::home_dir().unwrap().display()
+                    ))
+                );
+            } else {
+                //windows
+                assert_eq!(
+                    file_path,
+                    Path::new(&format!(
+                        "{}\\AppData\\Roaming\\example-app\\config\\example-config.toml",
+                        std::env::home_dir().unwrap().display()
+                    )),
+                );
+            }
+
+            //change the strategy back to Application style
+            change_config_strategy(ConfigStrategy::App);
+
+            let file_path = get_configuration_file_path("example-app", "example-config").unwrap();
+
+            if cfg!(target_os = "macos") {
+                assert_eq!(
+                    file_path,
+                    Path::new(&format!(
+                        "{}/.config/example-app/example-config.toml",
+                        std::env::home_dir().unwrap().display()
+                    )),
+                );
+            } else if cfg!(target_os = "linux") {
+                assert_eq!(
+                    file_path,
+                    Path::new(&format!(
+                        "{}/.config/example-app/example-config.toml",
+                        std::env::home_dir().unwrap().display()
+                    ))
+                );
+            } else {
+                //windows
+                assert_eq!(
+                    file_path,
+                    Path::new(&format!(
+                        "{}\\AppData\\Roaming\\example-app\\config\\example-config.toml",
+                        std::env::home_dir().unwrap().display()
+                    )),
+                );
+            }
+
+            // Make sure it is still the same config file
+            store_path(path, &config).expect("store_path failed");
+            let loaded = load_path(path).expect("load_path failed");
+            assert_eq!(config, loaded);
+        })
+    }
+
     /// [`store_path_perms`] stores [`ExampleConfig`], with only read permission for owner (UNIX).
     #[test]
     #[cfg(unix)]
