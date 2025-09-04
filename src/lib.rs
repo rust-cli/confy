@@ -92,13 +92,19 @@
 //! [`basic_toml` crate]: https://docs.rs/basic_toml
 
 mod utils;
+use etcetera::app_strategy;
 use utils::*;
 
-use etcetera::{AppStrategy, AppStrategyArgs, app_strategy::choose_app_strategy};
+use etcetera::{
+    AppStrategy, AppStrategyArgs, app_strategy::choose_app_strategy,
+    app_strategy::choose_native_strategy,
+};
+use lazy_static::lazy_static;
 use serde::{Serialize, de::DeserializeOwned};
 use std::fs::{self, File, OpenOptions, Permissions};
 use std::io::{ErrorKind::NotFound, Write};
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 use thiserror::Error;
 
 #[cfg(feature = "toml_conf")]
@@ -153,6 +159,10 @@ const EXTENSION: &str = "yml";
 #[cfg(feature = "ron_conf")]
 const EXTENSION: &str = "ron";
 
+lazy_static! {
+    static ref STRATEGY: Mutex<ConfigStrategy> = Mutex::new(ConfigStrategy::App);
+}
+
 /// The errors the confy crate can encounter.
 #[derive(Debug, Error)]
 pub enum ConfyError {
@@ -200,6 +210,84 @@ pub enum ConfyError {
 
     #[error("Failed to set configuration file permissions")]
     SetPermissionsFileError(#[source] std::io::Error),
+}
+
+/// Determine what strategy `confy` should use
+pub enum ConfigStrategy {
+    App,
+    Native,
+}
+
+/// Change the strategy to use
+///
+/// default is the AppStrategy
+pub fn change_config_strategy(changer: ConfigStrategy) {
+    *STRATEGY
+        .lock()
+        .expect("Error getting lock on Config Stragey") = changer;
+}
+
+enum InternalStrategy {
+    App(app_strategy::Xdg),
+    NativeMac(app_strategy::Apple),
+    NativeUnix(app_strategy::Unix),
+    NativeWindows(app_strategy::Windows),
+}
+
+// we only every access the config dir function
+impl AppStrategy for InternalStrategy {
+    fn home_dir(&self) -> &Path {
+        unimplemented!()
+    }
+
+    fn config_dir(&self) -> PathBuf {
+        match self {
+            InternalStrategy::App(xdg) => xdg.config_dir(),
+            InternalStrategy::NativeMac(mac) => mac.config_dir(),
+            InternalStrategy::NativeUnix(unix) => unix.config_dir(),
+            InternalStrategy::NativeWindows(windows) => windows.config_dir(),
+        }
+    }
+
+    fn data_dir(&self) -> PathBuf {
+        unimplemented!()
+    }
+
+    fn cache_dir(&self) -> PathBuf {
+        unimplemented!()
+    }
+
+    fn state_dir(&self) -> Option<PathBuf> {
+        unimplemented!()
+    }
+
+    fn runtime_dir(&self) -> Option<PathBuf> {
+        unimplemented!()
+    }
+}
+
+impl From<app_strategy::Xdg> for InternalStrategy {
+    fn from(value: app_strategy::Xdg) -> Self {
+        InternalStrategy::App(value)
+    }
+}
+
+impl From<app_strategy::Apple> for InternalStrategy {
+    fn from(value: app_strategy::Apple) -> Self {
+        InternalStrategy::NativeMac(value)
+    }
+}
+
+impl From<app_strategy::Unix> for InternalStrategy {
+    fn from(value: app_strategy::Unix) -> Self {
+        InternalStrategy::NativeUnix(value)
+    }
+}
+
+impl From<app_strategy::Windows> for InternalStrategy {
+    fn from(value: app_strategy::Windows) -> Self {
+        InternalStrategy::NativeWindows(value)
+    }
 }
 
 /// Load an application configuration from disk
@@ -469,14 +557,29 @@ pub fn get_configuration_file_path<'a>(
     config_name: impl Into<Option<&'a str>>,
 ) -> Result<PathBuf, ConfyError> {
     let config_name = config_name.into().unwrap_or("default-config");
-    let project = choose_app_strategy(AppStrategyArgs {
-        top_level_domain: "rs".to_string(),
-        author: "".to_string(),
-        app_name: app_name.to_string(),
-    })
-    .map_err(|e| {
-        ConfyError::BadConfigDirectory(format!("could not determine home directory path: {e}"))
-    })?;
+    let project: InternalStrategy = match *STRATEGY
+        .lock()
+        .expect("Error getting lock on config strategy")
+    {
+        ConfigStrategy::App => choose_app_strategy(AppStrategyArgs {
+            top_level_domain: "rs".to_string(),
+            author: "".to_string(),
+            app_name: app_name.to_string(),
+        })
+        .map_err(|e| {
+            ConfyError::BadConfigDirectory(format!("could not determine home directory path: {e}"))
+        })?
+        .into(),
+        ConfigStrategy::Native => choose_native_strategy(AppStrategyArgs {
+            top_level_domain: "rs".to_string(),
+            author: "".to_string(),
+            app_name: app_name.to_string(),
+        })
+        .map_err(|e| {
+            ConfyError::BadConfigDirectory(format!("could not determine home directory path: {e}"))
+        })?
+        .into(),
+    };
 
     let config_dir_str = get_configuration_directory_str(&project)?;
 
@@ -566,6 +669,53 @@ mod tests {
                 name: "Test".to_string(),
                 count: 42,
             };
+            store_path(path, &config).expect("store_path failed");
+            let loaded = load_path(path).expect("load_path failed");
+            assert_eq!(config, loaded);
+        })
+    }
+
+    #[test]
+    fn test_store_path_native() {
+        // change the strategy first then the app will always use it
+        change_config_strategy(ConfigStrategy::Native);
+
+        with_config_path(|path| {
+            let config: ExampleConfig = ExampleConfig {
+                name: "Test".to_string(),
+                count: 42,
+            };
+
+            let file_path = get_configuration_file_path("example-app", "example-config").unwrap();
+
+            if cfg!(target_os = "macos") {
+                assert_eq!(
+                    file_path,
+                    Path::new(&format!(
+                        "{}/Library/Preferences/rs.example-app/example-config.toml",
+                        std::env::home_dir().unwrap().display()
+                    )),
+                );
+            } else if cfg!(target_os = "linux") {
+                assert_eq!(
+                    file_path,
+                    Path::new(&format!(
+                        "{}/.config/example-app/example-config.toml",
+                        std::env::home_dir().unwrap().display()
+                    ))
+                );
+            } else {
+                //windows
+                assert_eq!(
+                    file_path,
+                    Path::new(&format!(
+                        "{}\\AppData\\Roaming\\example-app\\config\\example-config.toml",
+                        std::env::home_dir().unwrap().display()
+                    )),
+                );
+            }
+
+            // Make sure it is still the same config file
             store_path(path, &config).expect("store_path failed");
             let loaded = load_path(path).expect("load_path failed");
             assert_eq!(config, loaded);
