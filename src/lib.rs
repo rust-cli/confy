@@ -468,8 +468,11 @@ pub fn get_configuration_file_path<'a>(
     app_name: &str,
     config_name: impl Into<Option<&'a str>>,
 ) -> Result<PathBuf, ConfyError> {
+    let qualifier_name = option_env!("CONFY_APP_QUALIFIER").unwrap_or("rs");
+    let organization_name = option_env!("CONFY_APP_ORGANIZATION").unwrap_or("");
     let config_name = config_name.into().unwrap_or("default-config");
-    let project = ProjectDirs::from("rs", "", app_name).ok_or_else(|| {
+    
+    let project = ProjectDirs::from(qualifier_name, organization_name, app_name).ok_or_else(|| {
         ConfyError::BadConfigDirectory("could not determine home directory path".to_string())
     })?;
 
