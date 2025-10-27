@@ -61,15 +61,35 @@ Information about adding context to error messages can be found at [Providing Co
 
 ## Config File Location
 
-`confy` uses [ProjectDirs](https://github.com/dirs-dev/directories-rs?tab=readme-ov-file#projectdirs) to store your configuration files, the common locations for those are in the `config_dir` section, below are the common OS paths:
+`confy` uses the [etcetera](https://docs.rs/etcetera/latest/etcetera/) crate to store your configuration files, the common locations for those depend on the stratgey usd [`App Strategy`](https://docs.rs/etcetera/latest/etcetera/#appstrategy) or [`Native Strategy`](https://docs.rs/etcetera/latest/etcetera/#native-strategy), below are the common OS paths, you can change the strategy using the built-in [`change_config_strategy`](https://docs.rs/confy/2.0.0/confy/fn.change_config_strategy.html) function.
+
+### App Strategy
+
+This is the default strategy in version `2.0.0`+. It uses the `XDG` format on both Linux and MacOS systems.
+
+| Linux | macOS | Windows |
+| --- | --- | --- |
+| `$XDG_CONFIG_HOME`/`<project_path>` or `$HOME`/.config/`<project_path>` | `$HOME`/.config/`<project_path>` | `{FOLDERID_RoamingAppData}`/`<project_path>`/config |
+
+Where the `<project_path>` will be `$MY_APP_NAME`.
+
+### Native Strategy
+
+You can change to this strategy which is provided for both backwards capability and for GUI applications on macOS which is more traditional and expects this format.
 
 | Linux | macOS | Windows |
 | --- | --- | --- |
 | `$XDG_CONFIG_HOME`/`<project_path>` or `$HOME`/.config/`<project_path>` | `$HOME`/Library/Application Support/`<project_path>` | `{FOLDERID_RoamingAppData}`/`<project_path>`/config |
 
-Where the `<project_path>` will be `rs.$MY_APP_NAME`.
+Where the `<project_path>` will be `rs.$MY_APP_NAME` on macOS and just `$MY_APP_NAME` elsewhere.
 
 ## Breaking changes
+
+### Version 2.0.0
+
+In version `2.0.0` we moved from the [`ProjectDirs`](https://github.com/dirs-dev/directories-rs?tab=readme-ov-file#projectdirs) crate to [`etcetera`](https://docs.rs/etcetera/latest/etcetera/) allowing for both uses of `XDG` or the OS's Native paths.
+
+* From now on the default will be using `XDG` directories on macOS.
 
 ### Version 0.6.0
 
