@@ -213,18 +213,40 @@ pub enum ConfyError {
 }
 
 /// Determine what strategy `confy` should use
+/// these are based off of [the etcetera crate's strategies](https://docs.rs/etcetera/latest/etcetera/#strategies).
+///
+/// To change use [`change_config_strategy`] function before calling any load or save functions.
 pub enum ConfigStrategy {
+    /// The `App` Strategy is the default strategy
+    /// this is the traditional XDG strategy and will place the config file in the XDG directories.
+    /// See [Etcetera App Strategy](https://docs.rs/etcetera/latest/etcetera/#appstrategy) for more information.
     App,
+    /// The `Native` Strategy is mainly used for GUI applications and places the config directory based on the
+    /// host systems determination. See [Etcetera Native Strategy](https://docs.rs/etcetera/latest/etcetera/#native-strategy) for more information.
     Native,
 }
 
-/// Change the strategy to use
+/// Changes the strategy to use which places the config file using XDG or the native OS's configuration.
 ///
-/// default is the AppStrategy
+/// The default is the App Strategy see [`ConfigStrategy`] for more details on the strategy's affect.
+///
+/// ```rust,no_run
+/// # use confy::{ConfyError, ConfigStrategy, change_config_strategy};
+/// # use serde_derive::{Serialize, Deserialize};
+/// # fn main() -> Result<(), ConfyError> {
+/// #[derive(Default, Serialize, Deserialize)]
+/// struct MyConfig {}
+/// // use the native file paths to store the config
+/// change_config_strategy(ConfigStrategy::Native);
+///
+/// let cfg: MyConfig = confy::load("my-app-name", None)?;
+/// # Ok(())
+/// # }
+/// ```
 pub fn change_config_strategy(changer: ConfigStrategy) {
     *STRATEGY
         .lock()
-        .expect("Error getting lock on Config Stragey") = changer;
+        .expect("Error getting lock on Config Strategy") = changer;
 }
 
 enum InternalStrategy {
@@ -581,17 +603,11 @@ pub fn get_configuration_file_path<'a>(
         .into(),
     };
 
-    let config_dir_str = get_configuration_directory_str(&project)?;
+    let mut path = project.config_dir();
 
-    let path = [config_dir_str, format!("{config_name}.{EXTENSION}")]
-        .iter()
-        .collect();
+    path.push(format!("{config_name}.{EXTENSION}"));
 
     Ok(path)
-}
-
-fn get_configuration_directory_str(project: &impl AppStrategy) -> Result<String, ConfyError> {
-    Ok(project.config_dir().display().to_string())
 }
 
 #[cfg(test)]
