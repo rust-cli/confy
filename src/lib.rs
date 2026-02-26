@@ -102,7 +102,7 @@ use etcetera::{
 use lazy_static::lazy_static;
 use serde::{Serialize, de::DeserializeOwned};
 use std::fs::{self, File, OpenOptions, Permissions};
-use std::io::{ErrorKind::NotFound, Write};
+use std::io::{ErrorKind::AlreadyExists, ErrorKind::NotFound, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use thiserror::Error;
@@ -551,20 +551,62 @@ fn do_store<T: Serialize>(
         s = ron::ser::to_string_pretty(&cfg, pretty_cfg).map_err(ConfyError::SerializeRonError)?;
     }
 
-    let mut f = OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(true)
-        .open(path)
-        .map_err(ConfyError::OpenConfigurationFileError)?;
+    let perms = if perms.is_some() {
+        perms
+    } else {
+        match fs::metadata(path) {
+            Ok(metadata) => Some(metadata.permissions()),
+            Err(err) if err.kind() == NotFound => None,
+            Err(err) => return Err(ConfyError::OpenConfigurationFileError(err)),
+        }
+    };
 
+    let file_name = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("confy");
+
+    let mut attempt = 0;
+    let (mut f, tmp_path) = loop {
+        let candidate =
+            config_dir.join(format!(".{file_name}.tmp-{}-{attempt}", std::process::id()));
+        match OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&candidate)
+        {
+            Ok(file) => break (file, candidate),
+            Err(err) if err.kind() == AlreadyExists => {
+                attempt += 1;
+                continue;
+            }
+            Err(err) => return Err(ConfyError::OpenConfigurationFileError(err)),
+        }
+    };
+
+    if let Err(err) = f.write_all(s.as_bytes()) {
+        let _ = fs::remove_file(&tmp_path);
+        return Err(ConfyError::WriteConfigurationFileError(err));
+    }
+    if let Err(err) = f.flush() {
+        let _ = fs::remove_file(&tmp_path);
+        return Err(ConfyError::WriteConfigurationFileError(err));
+    }
+    if let Err(err) = f.sync_all() {
+        let _ = fs::remove_file(&tmp_path);
+        return Err(ConfyError::WriteConfigurationFileError(err));
+    }
     if let Some(p) = perms {
-        f.set_permissions(p)
-            .map_err(ConfyError::SetPermissionsFileError)?;
+        if let Err(err) = f.set_permissions(p) {
+            let _ = fs::remove_file(&tmp_path);
+            return Err(ConfyError::SetPermissionsFileError(err));
+        }
     }
 
-    f.write_all(s.as_bytes())
-        .map_err(ConfyError::WriteConfigurationFileError)?;
+    if let Err(err) = fs::rename(&tmp_path, path) {
+        let _ = fs::remove_file(&tmp_path);
+        return Err(ConfyError::WriteConfigurationFileError(err));
+    }
     Ok(())
 }
 
@@ -830,6 +872,33 @@ mod tests {
                 .expect("store_path_perms failed");
             let loaded = load_path(path).expect("load_path failed");
             assert_eq!(config, loaded);
+        })
+    }
+
+    /// [`store_path`] preserves existing file permissions when no explicit perms are provided.
+    #[test]
+    #[cfg(unix)]
+    fn test_store_path_preserves_permissions() {
+        with_config_path(|path| {
+            let config: ExampleConfig = ExampleConfig {
+                name: "Secret".to_string(),
+                count: 16549,
+            };
+
+            store_path(path, &config).expect("store_path failed");
+
+            let mut permissions = fs::metadata(path)
+                .expect("reading metadata failed")
+                .permissions();
+            permissions.set_mode(0o600);
+            fs::set_permissions(path, permissions).expect("set_permissions failed");
+
+            store_path(path, &config).expect("store_path failed");
+
+            let updated = fs::metadata(path)
+                .expect("reading metadata failed")
+                .permissions();
+            assert_eq!(updated.mode() & 0o777, 0o600);
         })
     }
 
