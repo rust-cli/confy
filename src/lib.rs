@@ -603,6 +603,14 @@ fn do_store<T: Serialize>(
         }
     }
 
+    // On Windows, renaming over an existing file can fail with "Access Denied"
+    // (error code 5) due to transient locks held by antivirus scanners or the
+    // search indexer. Removing the target first avoids this race condition.
+    #[cfg(target_os = "windows")]
+    if filepath.exists() {
+        fs::remove_file(&filepath).await?;
+    }
+
     if let Err(err) = fs::rename(&tmp_path, path) {
         let _ = fs::remove_file(&tmp_path);
         return Err(ConfyError::WriteConfigurationFileError(err));
